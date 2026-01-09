@@ -67,12 +67,12 @@ export const FunnelSnapshot: React.FC<FunnelSnapshotProps> = ({ data }) => {
   return (
     <section>
       <h2 className="text-xl font-bold mb-4 text-slate-200 uppercase tracking-wider">Snapshot do Funil de Vendas</h2>
-      <div className="bg-card border border-border rounded-xl p-6">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
         <div className="space-y-3">
           {funnelData.stages.map((stage, index) => (
-            <div key={stage.name} className="grid grid-cols-12 gap-x-4 items-center">
-              <div className="col-span-2 text-sm font-semibold text-text-secondary truncate">{stage.name}</div>
-              <div className="col-span-8">
+            <div key={stage.name} className="grid grid-cols-12 gap-x-2 sm:gap-x-4 items-center">
+              <div className="col-span-4 sm:col-span-2 text-sm font-semibold text-text-secondary truncate">{stage.name}</div>
+              <div className="col-span-6 sm:col-span-8">
                  <div className="w-full bg-slate-700 rounded-full h-6">
                     <div
                         className="h-6 rounded-full transition-all duration-500 ease-out flex items-center pr-2 justify-end"
@@ -82,13 +82,13 @@ export const FunnelSnapshot: React.FC<FunnelSnapshotProps> = ({ data }) => {
                     </div>
                  </div>
               </div>
-              <div className="col-span-2 text-right font-mono text-sm text-text-main">{stage.percentage.toFixed(1)}%</div>
+              <div className="col-span-2 text-right font-mono text-xs sm:text-sm text-text-main">{stage.percentage.toFixed(1)}%</div>
             </div>
           ))}
         </div>
         {funnelData.bottleneck && (
-            <div className="mt-6 pt-4 border-t border-border flex items-center gap-2 text-brand-orange">
-                <Icons.AlertTriangle className="h-5 w-5" />
+            <div className="mt-6 pt-4 border-t border-border flex items-start sm:items-center gap-2 text-brand-orange">
+                <Icons.AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 sm:mt-0" />
                 <p className="text-sm font-semibold">{funnelData.bottleneck}</p>
             </div>
         )}

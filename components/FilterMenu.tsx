@@ -43,7 +43,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({ startDate, endDate, onDateChang
 
       {isOpen && (
         <div 
-          className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl shadow-2xl z-20 p-4"
+          className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-72 bg-card border border-border rounded-xl shadow-2xl z-20 p-4"
           style={{ animation: 'fade-in-down 0.2s ease-out' }}
         >
           <div className="flex justify-between items-center mb-4">

@@ -23,7 +23,6 @@ import { CrmSummary } from './components/CrmSummary';
 import { FunnelSnapshot } from './components/FunnelSnapshot';
 import { CampaignsSummary } from './components/CampaignsSummary';
 import { DashboardSkeletons } from './components/DashboardSkeletons';
-import FilterMenu from './components/FilterMenu';
 
 
 const App: React.FC = () => {
@@ -183,18 +182,16 @@ const App: React.FC = () => {
           lastUpdated={lastUpdated} 
           onRefresh={fetchData} 
           loading={loading}
+          startDate={dateRange.startDate}
+          endDate={dateRange.endDate}
+          onDateChange={handleDateChange}
+          hasActiveFilter={!!(dateRange.startDate || dateRange.endDate)}
         />
-        <div className="flex justify-between items-center border-b border-border">
+        <div className="border-b border-border">
             <Tabs
                 tabs={Object.keys(tabContent)}
                 activeTab={activeTab}
                 onTabClick={setActiveTab}
-            />
-            <FilterMenu 
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              onDateChange={handleDateChange}
-              hasActiveFilter={!!(dateRange.startDate || dateRange.endDate)}
             />
         </div>
         <main className="mt-6">

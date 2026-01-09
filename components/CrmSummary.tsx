@@ -1,4 +1,3 @@
-
 import React, { useMemo, useCallback } from 'react';
 import { CrmData, CrmKpis } from '../types';
 import * as Icons from './Icons';
@@ -57,7 +56,7 @@ const TotalLeadsCard: React.FC<CrmSummaryProps> = ({ kpis }) => {
         <div className="bg-card border border-border p-6 rounded-xl flex flex-col justify-between h-[220px] relative">
             <div>
                 <p className="text-sm font-semibold uppercase text-text-secondary tracking-wider mb-2">👥 Total de Leads</p>
-                <p className="text-5xl font-extrabold text-text-main">{kpis.totalLeads}</p>
+                <p className="text-4xl sm:text-5xl font-extrabold text-text-main">{kpis.totalLeads}</p>
             </div>
             <div>
                 <p className="text-sm font-medium"><span className="text-brand-cyan">● Ativos:</span> {kpis.activeLeads} ({formatPercent(activePct)})</p>
@@ -79,7 +78,7 @@ const CrmConversionCard: React.FC<CrmSummaryProps> = ({ kpis }) => {
         <div className="bg-card border border-border p-6 rounded-xl flex flex-col justify-between h-[220px]">
             <div>
                 <p className="text-sm font-semibold uppercase text-text-secondary tracking-wider mb-2">🎯 Taxa de Conversão</p>
-                <p className="text-5xl font-extrabold text-text-main">{formatPercent(kpis.conversionRate)}</p>
+                <p className="text-4xl sm:text-5xl font-extrabold text-text-main">{formatPercent(kpis.conversionRate)}</p>
             </div>
             <div>
                 <div className="flex justify-between items-baseline mb-1">
@@ -104,7 +103,7 @@ const CrmPipelineCard: React.FC<CrmSummaryProps> = ({ kpis, data }) => {
         <div className="bg-card border border-border p-6 rounded-xl flex flex-col justify-between h-[220px]">
             <div>
                 <p className="text-sm font-semibold uppercase text-text-secondary tracking-wider mb-2">💰 Pipeline Ativo</p>
-                <p className="text-5xl font-extrabold text-text-main">{formatCurrency(kpis.totalPipeline)}</p>
+                <p className="text-4xl sm:text-5xl font-extrabold text-text-main">{formatCurrency(kpis.totalPipeline)}</p>
             </div>
             <div>
                 <div className="flex justify-between items-baseline mb-1">
@@ -134,11 +133,13 @@ const CrmLostValueCard: React.FC<CrmSummaryProps> = ({ kpis, data }) => {
         }, {} as { [key: string]: number });
 
         return Object.entries(reasonCounts)
-            .sort((a, b) => b[1] - a[1])
+            // FIX: Explicitly cast sort operands to Number to prevent type errors.
+            .sort((a, b) => Number(b[1]) - Number(a[1]))
             .slice(0, 3)
             .map(([reason, count]) => ({
                 reason,
-                percentage: (count / totalLostWithReason) * 100,
+                // FIX: Explicitly cast division operands to Number to prevent type errors.
+                percentage: (Number(count) / totalLostWithReason) * 100,
             }));
     }, [data]);
 
@@ -152,7 +153,7 @@ const CrmLostValueCard: React.FC<CrmSummaryProps> = ({ kpis, data }) => {
                     </span>
                     Valor Perdido
                 </p>
-                <p className="text-5xl font-extrabold text-text-main">{formatCurrency(kpis.lostValue)}</p>
+                <p className="text-4xl sm:text-5xl font-extrabold text-text-main">{formatCurrency(kpis.lostValue)}</p>
                 <p className="text-sm text-red-300 mt-1">{formatPercent(kpis.lossRate)} de taxa de perda ({kpis.lostLeads} leads)</p>
             </div>
             <div>

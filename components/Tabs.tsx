@@ -9,8 +9,8 @@ interface TabsProps {
 
 const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onTabClick }) => {
   return (
-    <div>
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+    <div className="overflow-x-auto no-scrollbar">
+      <nav className="-mb-px flex space-x-4 sm:space-x-8" aria-label="Tabs">
         {tabs.map((tab) => (
           <button
             key={tab}

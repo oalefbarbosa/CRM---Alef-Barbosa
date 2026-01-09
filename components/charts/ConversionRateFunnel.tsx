@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { CrmData } from '../../types';
 import { formatPercent } from '../../utils/formatters';
@@ -85,14 +86,14 @@ const ConversionRateFunnel: React.FC<ConversionRateFunnelProps> = ({ data }) => 
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-2 sm:p-4 space-y-4">
       {stages.map((stage, index) => (
         <React.Fragment key={stage.name}>
-          <div className="flex items-center gap-4">
-            <div className="flex-none w-48 text-right text-sm font-semibold text-text-main">{stage.name}</div>
+          <div className="sm:flex sm:items-center sm:gap-4 space-y-2 sm:space-y-0">
+            <div className="flex-none sm:w-48 sm:text-right text-sm font-semibold text-text-main">{stage.name}</div>
             <div className="flex-grow flex items-center gap-3">
               <div
-                className="h-8 rounded-r-md flex items-center pr-3 justify-end"
+                className="h-8 rounded-r-md flex items-center pr-3 justify-end w-full"
                 style={{
                   width: `${(stage.count / stages[0].count) * 100}%`,
                   backgroundColor: funnelColors[index],
@@ -104,15 +105,17 @@ const ConversionRateFunnel: React.FC<ConversionRateFunnelProps> = ({ data }) => 
             </div>
           </div>
           {index < conversions.length && (
-            <div className="flex items-center gap-4 pl-[212px] my-2">
-                <ChevronDown className="h-5 w-5 text-text-secondary" />
-                <div className="text-sm">
-                    <span className={`font-bold ${getStatusInfo(conversions[index].status).textColor}`}>{formatPercent(conversions[index].rate)}</span>
-                    <span className="text-text-secondary"> converteram ({conversions[index].toCount} de {conversions[index].fromCount})</span>
-                </div>
-                <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusInfo(conversions[index].status).textColor}`}>
-                    {getStatusInfo(conversions[index].status).icon}
-                    <span>{getStatusInfo(conversions[index].status).label}</span>
+            <div className="flex items-start gap-2 sm:gap-4 sm:pl-[212px] my-2">
+                <ChevronDown className="h-5 w-5 text-text-secondary mt-0.5 flex-shrink-0" />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="text-sm">
+                        <span className={`font-bold ${getStatusInfo(conversions[index].status).textColor}`}>{formatPercent(conversions[index].rate)}</span>
+                        <span className="text-text-secondary"> converteram ({conversions[index].toCount} de {conversions[index].fromCount})</span>
+                    </div>
+                    <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusInfo(conversions[index].status).textColor}`}>
+                        {getStatusInfo(conversions[index].status).icon}
+                        <span>{getStatusInfo(conversions[index].status).label}</span>
+                    </div>
                 </div>
             </div>
           )}
@@ -127,7 +130,7 @@ const ConversionRateFunnel: React.FC<ConversionRateFunnelProps> = ({ data }) => 
                     <li key={c.to}>• <span className="font-semibold text-text-main">{c.from} → {c.to}:</span> {formatPercent(c.rate)}</li>
                 ))}
             </ul>
-             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border/50">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-border/50">
                 <div>
                     <p className="text-xs text-text-secondary">Taxa de Conversão Global</p>
                     <p className="font-bold text-lg text-brand-cyan">{formatPercent(globalConversion)}</p>
