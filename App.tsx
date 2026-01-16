@@ -1,28 +1,12 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { CrmData, CampaignData, CrmKpis, CampaignKpis, ComparativeKpis } from './types';
+import { CrmData, CampaignData, DashboardGeralMetrics } from './types';
 import { loadCRM, loadCampanhas } from './services/dataService';
-import { calculateCrmKpis, calculateCampaignKpis, calculateComparativeKpis } from './utils/calculations';
+import { calculateDashboardGeralMetrics } from './utils/calculations';
 import Header from './components/Header';
-import ComparativeKpiCard from './components/ComparativeKpiCard';
-import ChartCard from './components/ChartCard';
-import SalesFunnelChart from './components/charts/SalesFunnelChart';
-import StatusDistributionChart from './components/charts/StatusDistributionChart';
-import LossReasonChart from './components/charts/LossReasonChart';
-import ValueFunnelChart from './components/charts/ValueFunnelChart';
-import LeadsByBusinessChart from './components/charts/LeadsByBusinessChart';
-import MonthlyLeadsChart from './components/charts/MonthlyLeadsChart';
-import CampaignPerformanceChart from './components/charts/CampaignPerformanceChart';
-import CplByCampaignChart from './components/charts/CplByCampaignChart';
-import AvgTimeInStageChart from './components/charts/AvgTimeInStageChart';
-import ConversionRateFunnel from './components/charts/ConversionRateFunnel';
-import LeadsTable from './components/tables/LeadsTable';
-import Tabs from './components/Tabs';
 import * as Icons from './components/Icons';
-import { CrmSummary } from './components/CrmSummary';
-import { FunnelSnapshot } from './components/FunnelSnapshot';
-import { CampaignsSummary } from './components/CampaignsSummary';
 import { DashboardSkeletons } from './components/DashboardSkeletons';
+import DashboardGeralView from './components/DashboardGeralView';
 
 
 const App: React.FC = () => {
@@ -31,13 +15,20 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState('Dashboard Geral');
-  const [dateRange, setDateRange] = useState(() => {
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  const [dateRange, setDateRange] = useState<{startDate: Date | null, endDate: Date | null}>(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 29);
     startDate.setHours(0, 0, 0, 0);
-    const endDate = now;
+    endDate.setHours(23, 59, 59, 999);
     return { startDate, endDate };
+  });
+
+  const [filters, setFilters] = useState<{ tipoNegocio: string[], source: string[], status: string[] }>({
+    tipoNegocio: [],
+    source: [],
+    status: [],
   });
 
   const fetchData = useCallback(async () => {
@@ -64,37 +55,69 @@ const App: React.FC = () => {
     setDateRange(newRange);
   }, []);
 
-  const filteredCrmData = useMemo(() => {
-    if (!dateRange.startDate && !dateRange.endDate) return crmData;
-    
-    const inclusiveEndDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
-    if (inclusiveEndDate) inclusiveEndDate.setHours(23, 59, 59, 999);
+  const handleFilterChange = useCallback((filterType: keyof typeof filters, selectedOptions: string[]) => {
+    setFilters(prev => ({ ...prev, [filterType]: selectedOptions }));
+  }, []);
 
-    return crmData.filter(lead => {
-        const leadDate = lead.dataCriacao;
-        const startMatch = !dateRange.startDate || leadDate >= dateRange.startDate;
-        const endMatch = !inclusiveEndDate || leadDate <= inclusiveEndDate;
-        return startMatch && endMatch;
+  const { uniqueTipoNegocio, uniqueSource, uniqueStatus } = useMemo(() => {
+    const tipoNegocioSet = new Set<string>();
+    const sourceSet = new Set<string>();
+    const statusSet = new Set<string>();
+    crmData.forEach(d => {
+      if (d.tipoNegocio && d.tipoNegocio !== 'N/A') tipoNegocioSet.add(d.tipoNegocio);
+      if (d.source && d.source !== 'N/A') sourceSet.add(d.source);
+      if (d.status) statusSet.add(d.status);
     });
-  }, [crmData, dateRange]);
+    return {
+      uniqueTipoNegocio: Array.from(tipoNegocioSet).sort(),
+      uniqueSource: Array.from(sourceSet).sort(),
+      uniqueStatus: Array.from(statusSet).sort(),
+    };
+  }, [crmData]);
+
+
+  const filteredCrmData = useMemo(() => {
+    let data = crmData;
+
+    // Date filter
+    if (dateRange.startDate && dateRange.endDate) {
+        const inclusiveEndDate = new Date(dateRange.endDate);
+        inclusiveEndDate.setHours(23, 59, 59, 999);
+        data = data.filter(lead => {
+            const leadDate = lead.dataCriacao;
+            return leadDate >= dateRange.startDate! && leadDate <= inclusiveEndDate;
+        });
+    }
+
+    // Text filters
+    if (filters.tipoNegocio.length > 0) {
+        data = data.filter(lead => filters.tipoNegocio.includes(lead.tipoNegocio));
+    }
+    if (filters.source.length > 0) {
+        data = data.filter(lead => filters.source.includes(lead.source));
+    }
+    if (filters.status.length > 0) {
+        data = data.filter(lead => filters.status.includes(lead.status));
+    }
+
+    return data;
+  }, [crmData, dateRange, filters]);
 
   const filteredCampaignData = useMemo(() => {
-    if (!dateRange.startDate && !dateRange.endDate) return campaignData;
-    
-    const inclusiveEndDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
-    if (inclusiveEndDate) inclusiveEndDate.setHours(23, 59, 59, 999);
-
+    if (!dateRange.startDate || !dateRange.endDate) return campaignData;
+    const inclusiveEndDate = new Date(dateRange.endDate);
+    inclusiveEndDate.setHours(23, 59, 59, 999);
     return campaignData.filter(campaign => {
         const campaignDate = campaign.dataInicio;
-        const startMatch = !dateRange.startDate || campaignDate >= dateRange.startDate;
-        const endMatch = !inclusiveEndDate || campaignDate <= inclusiveEndDate;
-        return startMatch && endMatch;
+        return campaignDate >= dateRange.startDate! && campaignDate <= inclusiveEndDate;
     });
   }, [campaignData, dateRange]);
 
-  const crmKpis: CrmKpis | null = useMemo(() => loading ? null : calculateCrmKpis(filteredCrmData), [filteredCrmData, loading]);
-  const campaignKpis: CampaignKpis | null = useMemo(() => loading ? null : calculateCampaignKpis(filteredCampaignData, crmKpis), [filteredCampaignData, crmKpis, loading]);
-  const comparativeKpis: ComparativeKpis | null = useMemo(() => loading ? null : calculateComparativeKpis(crmData, dateRange.startDate, dateRange.endDate), [crmData, dateRange, loading]);
+  const dashboardGeralMetrics: DashboardGeralMetrics | null = useMemo(() => 
+    loading ? null : calculateDashboardGeralMetrics(filteredCrmData, crmData, filteredCampaignData, campaignData, dateRange),
+  [filteredCrmData, crmData, filteredCampaignData, campaignData, dateRange, loading]);
+  
+  const hasActiveNonDateFilter = filters.tipoNegocio.length > 0 || filters.source.length > 0 || filters.status.length > 0;
 
   if (error) {
     return (
@@ -114,67 +137,6 @@ const App: React.FC = () => {
     );
   }
 
-  const tabContent = {
-    'Dashboard Geral': (
-        loading || !crmKpis || !campaignKpis || !comparativeKpis ? <DashboardSkeletons /> :
-        <div className="space-y-8">
-            <section>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <ComparativeKpiCard title="Leads no período" data={comparativeKpis.leads} format="number" />
-                    <ComparativeKpiCard title="Taxa Conversão no período" data={comparativeKpis.conversionRate} format="percent" />
-                    <ComparativeKpiCard title="Pipeline no período" data={comparativeKpis.pipeline} format="currency" />
-                </div>
-            </section>
-            
-            <CrmSummary kpis={crmKpis} data={filteredCrmData} />
-            <FunnelSnapshot data={filteredCrmData} />
-            <CampaignsSummary campaignKpis={campaignKpis} crmKpis={crmKpis} campaignData={filteredCampaignData} />
-
-        </div>
-    ),
-    'Análise Temporal': (
-        <div className="space-y-8">
-            <section>
-                <div className="grid grid-cols-1 gap-6">
-                    <ChartCard title="Entrada de Leads Mensal" loading={loading} contentClassName="h-96"><MonthlyLeadsChart data={filteredCrmData} /></ChartCard>
-                </div>
-            </section>
-        </div>
-    ),
-    'Funil e Conversão': (
-        <div className="space-y-8">
-            <section>
-                <ChartCard title="Funil de Conversão Detalhado" loading={loading} contentClassName="h-auto">
-                    <ConversionRateFunnel data={filteredCrmData} />
-                </ChartCard>
-            </section>
-            <section>
-               <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 mt-8">
-                  <ChartCard title="Funil de Vendas" loading={loading}><SalesFunnelChart data={filteredCrmData} /></ChartCard>
-                  <ChartCard title="Distribuição de Status" loading={loading}><StatusDistributionChart data={filteredCrmData} /></ChartCard>
-                  <ChartCard title="Motivos de Perda" loading={loading}><LossReasonChart data={filteredCrmData} /></ChartCard>
-                  <ChartCard title="Funil com Valores (R$)" loading={loading}><ValueFunnelChart data={filteredCrmData} /></ChartCard>
-                  <ChartCard title="Leads por Tipo de Negócio" loading={loading}><LeadsByBusinessChart data={filteredCrmData} /></ChartCard>
-                  <ChartCard title="Tempo Médio em Cada Etapa (dias)" loading={loading}><AvgTimeInStageChart data={filteredCrmData} /></ChartCard>
-               </div>
-            </section>
-        </div>
-    ),
-    'Performance de Campanhas': (
-        <div className="space-y-8">
-            <section>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <ChartCard title="Leads Gerados vs. Investimento" loading={loading} contentClassName="h-96"><CampaignPerformanceChart data={filteredCampaignData} /></ChartCard>
-                    <ChartCard title="Custo por Lead (CPL) por Campanha" loading={loading} contentClassName="h-96"><CplByCampaignChart data={filteredCampaignData} /></ChartCard>
-                </div>
-            </section>
-        </div>
-    ),
-    'Tabela de Leads': (
-      <LeadsTable data={filteredCrmData} loading={loading} />
-    )
-  };
-
   return (
     <div className="min-h-screen bg-background font-sans text-text-main p-4 sm:p-6 lg:p-8">
       <div className="max-w-screen-2xl mx-auto">
@@ -185,17 +147,20 @@ const App: React.FC = () => {
           startDate={dateRange.startDate}
           endDate={dateRange.endDate}
           onDateChange={handleDateChange}
-          hasActiveFilter={!!(dateRange.startDate || dateRange.endDate)}
+          hasActiveFilter={!!(dateRange.startDate || dateRange.endDate) || hasActiveNonDateFilter}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          filterOptions={{
+            tipoNegocio: uniqueTipoNegocio,
+            source: uniqueSource,
+            status: uniqueStatus,
+          }}
         />
-        <div className="border-b border-border">
-            <Tabs
-                tabs={Object.keys(tabContent)}
-                activeTab={activeTab}
-                onTabClick={setActiveTab}
-            />
-        </div>
-        <main className="mt-6">
-          {tabContent[activeTab as keyof typeof tabContent]}
+        <main>
+          {loading || !dashboardGeralMetrics 
+            ? <DashboardSkeletons /> 
+            : <DashboardGeralView data={dashboardGeralMetrics} crmData={filteredCrmData} />
+          }
         </main>
       </div>
     </div>

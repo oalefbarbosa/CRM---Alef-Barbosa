@@ -30,6 +30,9 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChang
         end.setHours(23, 59, 59, 999);
 
         switch (preset) {
+            case 'today':
+                start.setHours(0, 0, 0, 0);
+                break;
             case 'last_7_days':
                 start.setDate(end.getDate() - 6);
                 start.setHours(0, 0, 0, 0);
@@ -48,10 +51,6 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChang
                 break;
             case 'last_90_days':
                 start.setDate(end.getDate() - 89);
-                start.setHours(0, 0, 0, 0);
-                break;
-            case 'last_180_days':
-                start.setDate(end.getDate() - 179);
                 start.setHours(0, 0, 0, 0);
                 break;
         }
@@ -88,12 +87,12 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChang
             <div>
                 <p className="text-xs font-medium text-text-secondary mb-2">Predefinições</p>
                 <div className="grid grid-cols-3 gap-2">
+                    <PresetButton label="Hoje" preset="today" />
                     <PresetButton label="7 dias" preset="last_7_days" />
                     <PresetButton label="30 dias" preset="last_30_days" />
                     <PresetButton label="Este Mês" preset="this_month" />
                     <PresetButton label="60 dias" preset="last_60_days" />
                     <PresetButton label="90 dias" preset="last_90_days" />
-                    <PresetButton label="180 dias" preset="last_180_days" />
                 </div>
             </div>
 

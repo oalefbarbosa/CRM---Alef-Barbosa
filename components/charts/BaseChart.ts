@@ -1,3 +1,4 @@
+
 // Fix: Import React to make the 'React' namespace available for types like 'React.RefObject'.
 import React, { useEffect, useRef } from 'react';
 import type { ChartConfiguration, Chart } from 'chart.js';
