@@ -70,7 +70,8 @@ export function loadCRM(): Promise<CrmData[]> {
           status: (row['Status'] || 'leads').toLowerCase().trim(),
           dataCriacao: parseDate(row['Data Criação']) || new Date(),
           dataAtualizacao: parseDate(row['Data Atualização'] || row['Data Criação']) || new Date(),
-          dataFechamento: parseDate(row['data de fechame']),
+          // Improved mapping for Data de Fechamento with fallbacks for common header names
+          dataFechamento: parseDate(row['Data de Fechamento'] || row['Data Fechamento'] || row['data de fechame']),
           responsavel: row['Responsável'] || 'N/A',
           email: row['Email'] || '',
           telefone: row['Telefone'] || '',

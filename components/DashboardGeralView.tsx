@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { CrmData, DashboardGeralMetrics } from '../types';
 import { formatCurrency, formatNumber, formatPercent } from '../utils/formatters';
 import * as Icons from './Icons';
@@ -12,80 +12,88 @@ import CampaignAnalysisSection from './CampaignAnalysisSection';
 import ResponsibleAnalysisSection from './ResponsibleAnalysisSection';
 import ForecastSection from './ForecastSection';
 import TimeFunnelSection from './TimeFunnelSection';
+import LeadsTable from './tables/LeadsTable';
+import Tabs from './Tabs';
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// --- Sub-Components ---
-const SmartAlert: React.FC<{ alert: DashboardGeralMetrics['alert'] }> = ({ alert }) => {
-    if (!alert) return null;
-    const colors = { critical: 'bg-red-900/40 border-red-700 text-red-200', bottleneck: 'bg-orange-900/40 border-orange-700 text-orange-200', opportunity: 'bg-green-900/40 border-green-700 text-green-200' };
-    const icons = { critical: <Icons.AlertTriangle/>, bottleneck: <Icons.AlertTriangle/>, opportunity: <Icons.CheckCircle/> }
+// --- New Components for Restructure ---
 
+const ActionCenter: React.FC<{ 
+    alert: DashboardGeralMetrics['alert'], 
+    prospecting: DashboardGeralMetrics['prospecting'],
+    followUp: DashboardGeralMetrics['followUp']
+}> = ({ alert, prospecting, followUp }) => {
     return (
-        <div className={`rounded-xl p-4 flex items-start gap-4 ${colors[alert.type]}`}>
-            <div className="flex-shrink-0 mt-1">{icons[alert.type]}</div>
-            <div>
-                <h3 className="font-bold">{alert.title}</h3>
-                <p className="text-sm opacity-90">{alert.message}</p>
-                {alert.valueAtRisk && <p className="font-bold mt-1">{formatCurrency(alert.valueAtRisk)} em risco</p>}
-                {alert.details && <div className="text-xs mt-2 space-y-1">{alert.details.map(d => <p key={d}>• {d}</p>)}</div>}
+        <div className="bg-card border border-border rounded-xl p-0 overflow-hidden h-full flex flex-col min-h-[300px]">
+            <div className="p-4 border-b border-border bg-slate-800/50">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-white">
+                    <Icons.AlertTriangle className="text-brand-orange" />
+                    Centro de Ação
+                </h3>
+            </div>
+            
+            <div className="p-4 space-y-4 flex-grow overflow-y-auto custom-scrollbar">
+                {/* 1. Global Alert */}
+                {alert && alert.type === 'critical' && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-red-200 font-bold text-sm mb-1">{alert.title}</p>
+                        <p className="text-red-300 text-xs">{alert.message}</p>
+                        {alert.valueAtRisk && <p className="text-red-100 font-bold text-xs mt-2">{formatCurrency(alert.valueAtRisk)} em risco</p>}
+                    </div>
+                )}
+
+                {/* 2. Prospecting Risks */}
+                {(prospecting.atRisk.notApproached > 0 || prospecting.atRisk.lastAttempt > 0) && (
+                     <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-200">Leads Sem Contato</p>
+                            <p className="text-xs text-slate-400">Parados na prospecção</p>
+                        </div>
+                        <div className="text-right">
+                             <p className="text-xl font-bold text-brand-orange">{prospecting.atRisk.total}</p>
+                             <p className="text-xs text-brand-orange">Ação Necessária</p>
+                        </div>
+                     </div>
+                )}
+
+                {/* 3. Follow Up Urgency */}
+                {(followUp.urgent.lastFup.count > 0 || followUp.urgent.stale7days > 0) && (
+                     <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-200">Follow-Ups Atrasados</p>
+                            <p className="text-xs text-slate-400">Leads esfriando</p>
+                        </div>
+                         <div className="text-right">
+                             <p className="text-xl font-bold text-brand-red">{followUp.urgent.stale7days + followUp.urgent.lastFup.count}</p>
+                             <p className="text-xs text-brand-red">Urgente</p>
+                        </div>
+                     </div>
+                )}
+
+                {!alert && prospecting.atRisk.total === 0 && followUp.urgent.stale7days === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-60 min-h-[150px]">
+                        <Icons.CheckCircle className="h-12 w-12 mb-2" />
+                        <p>Tudo sob controle!</p>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-const ProspectingAnalysisSection: React.FC<{ data: DashboardGeralMetrics['prospecting'] }> = ({ data }) => {
-    const chartData = { labels: data.distribution.map(a => a.name), datasets: [{ data: data.distribution.map(a => a.count), backgroundColor: '#3b82f6', borderRadius: 4 }]};
-    const chartOptions = { indexAxis: 'y' as const, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, y: { ticks: { color: '#f8fafc', font: {size: 10} }, grid: { display: false } } }};
-
-    return (
-        <section>
-            <h2 className="text-xl font-bold mb-4 text-slate-200 uppercase tracking-wider flex items-center gap-2">📞 Análise de Prospecção</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <ChartCard title={`Distribuição (${data.totalInStage} leads)`} loading={false} contentClassName="h-60"><Bar options={chartOptions} data={chartData} /></ChartCard>
-                <ChartCard title="Taxa de Sucesso por Tentativa" loading={false}><p className="text-sm text-center text-text-secondary h-full flex items-center justify-center">Cálculo de eficiência por tentativa requer histórico de eventos.</p></ChartCard>
-                <div className="bg-red-900/40 border border-red-700 rounded-xl p-5 flex flex-col justify-center">
-                    <h3 className="text-base font-bold text-red-200 mb-2 flex items-center gap-2">🚨 Leads em Risco Imediato</h3>
-                    <p className="text-3xl font-bold">{formatNumber(data.atRisk.total)} leads</p>
-                    <p className="font-semibold text-red-300 text-lg">{formatCurrency(data.atRisk.value)}</p>
-                    <div className="text-sm space-y-1 mt-2 text-red-200">
-                        <p>Não abordados: {data.atRisk.notApproached}</p>
-                        <p>Última Tentativa: {data.atRisk.lastAttempt}</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-}
-
-const FollowUpAnalysisSection: React.FC<{ data: DashboardGeralMetrics['followUp'] }> = ({ data }) => {
-    return (
-        <section>
-             <h2 className="text-xl font-bold mb-4 text-slate-200 uppercase tracking-wider flex items-center gap-2">✉️ Análise de Follow Up</h2>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <ChartCard title={`Distribuição (${data.totalInStage} leads)`} loading={false} contentClassName="h-60">
-                    <ul className="space-y-2 h-full flex flex-col justify-center">
-                        {data.distribution.map(d => (
-                            <li key={d.name} className="flex justify-between text-sm items-center">
-                                <span className="text-text-secondary">{d.name}</span>
-                                <span className="font-bold bg-slate-700 px-2 py-0.5 rounded">{d.count}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </ChartCard>
-                <ChartCard title="Performance de Fechamento" loading={false}><p className="text-sm text-center text-text-secondary h-full flex items-center justify-center">Cálculo de fechamento por FUP requer histórico de eventos.</p></ChartCard>
-                <div className="bg-orange-900/40 border border-orange-700 rounded-xl p-5 flex flex-col justify-center">
-                    <h3 className="text-base font-bold text-orange-200 mb-2 flex items-center gap-2">⏰ Follow Ups Urgentes</h3>
-                     <div className="text-sm space-y-2 mt-2 text-orange-200">
-                        <p><span className="font-bold">Em Último Fup:</span> {data.urgent.lastFup.count} leads ({formatCurrency(data.urgent.lastFup.value)})</p>
-                        <p><span className="font-bold">Sem resposta {'>'}7 dias:</span> {data.urgent.stale7days} leads</p>
-                        <p><span className="font-bold">Sem resposta {'>'}14 dias:</span> {data.urgent.stale14days} leads</p>
-                    </div>
-                </div>
-             </div>
-        </section>
-    )
-}
+const CompactKpiCard: React.FC<{title: string, value: string, subtext?: string, color?: string, icon?: React.ReactNode}> = ({ title, value, subtext, color = "text-text-main", icon }) => (
+    <div className="bg-card border border-border rounded-xl p-4 flex flex-col justify-between hover:border-brand-blue/50 transition-colors h-full">
+        <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wide truncate pr-2">{title}</span>
+            {icon && <span className="text-text-secondary opacity-70 flex-shrink-0">{icon}</span>}
+        </div>
+        <div>
+            <p className={`text-xl sm:text-2xl font-extrabold ${color} truncate`}>{value}</p>
+            {subtext && <p className="text-[10px] sm:text-xs text-text-secondary mt-1 truncate">{subtext}</p>}
+        </div>
+    </div>
+);
 
 // --- Main View ---
 
@@ -93,53 +101,137 @@ interface DashboardGeralViewProps {
     data: DashboardGeralMetrics; 
     crmData: CrmData[];
 }
-const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({ data, crmData }) => {
-    const { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, prospeccaoKpi, propostaKpi, followUpKpi, negociacaoKpi, closedSales, lostLeads, geralConversion } = data;
-    const conversionRateColor = geralConversion.rate.current >= 5 ? 'text-brand-green' : geralConversion.rate.current >= 2 ? 'text-brand-yellow' : 'text-brand-red';
 
-    const KpiCard: React.FC<{title: string, count: string, value?: string, conversionRate?: number, conversionLabel?: string, icon?: React.ReactNode, children?: React.ReactNode}> = ({ title, count, value, conversionRate, conversionLabel, icon, children }) => (
-        <div className="bg-card border border-border rounded-xl p-4 flex flex-col h-full"><div className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-2">{icon}<span>{title}</span></div><div className="flex-grow"><p className="text-3xl font-extrabold">{count}</p>{value && <p className="text-lg font-bold text-slate-400">{value}</p>}{children}</div>{conversionRate !== undefined && (<div className="text-xs text-text-secondary mt-2"><span className="font-bold text-brand-cyan">{formatPercent(conversionRate)}</span> {conversionLabel || 'da etapa anterior'}</div>)}</div>
+const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({ data, crmData }) => {
+    const [activeTab, setActiveTab] = useState('Visão Geral');
+    
+    // Deconstruct Data
+    const { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, closedSales, geralConversion, velocity } = data;
+
+    // --- Tab 1: Visão Geral (Executive/Operational) ---
+    const renderOverview = () => (
+        <div className="space-y-6 animate-fade-in-down pb-8">
+            {/* ROW 1: The "Z" Top - Diagnosis & Action */}
+            {/* Mobile: Stacked, Desktop (XL): Side-by-side 2/3 + 1/3 */}
+            <div className="flex flex-col xl:flex-row gap-6 h-auto xl:h-[580px]">
+                {/* Priority 1: The Funnel */}
+                <div className="w-full xl:w-2/3 h-[500px] xl:h-full">
+                     <ChartCard title="Funil de Conversão & Gargalos" loading={false} className="h-full" contentClassName="h-[calc(100%-3rem)] overflow-y-auto no-scrollbar">
+                        <VisualFunnel 
+                            stages={data.visualFunnel.stages} 
+                            conversions={data.visualFunnel.conversions} 
+                            bottleneck={data.visualFunnel.bottleneck} 
+                            opportunity={data.visualFunnel.opportunity} 
+                        />
+                     </ChartCard>
+                </div>
+                
+                {/* Priority 2: Action Center */}
+                <div className="w-full xl:w-1/3 h-auto xl:h-full">
+                    <ActionCenter alert={data.alert} prospecting={data.prospecting} followUp={data.followUp} />
+                </div>
+            </div>
+
+            {/* ROW 2: Priority 3 - Essential KPIs Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                <CompactKpiCard 
+                    title="Vendas (Mês)" 
+                    value={formatNumber(closedSales.count.current)} 
+                    subtext={formatCurrency(closedSales.value.current)} 
+                    color="text-brand-green"
+                    icon={<Icons.DollarSign className="h-4 w-4 text-brand-green"/>}
+                />
+                <CompactKpiCard 
+                    title="Taxa Conv." 
+                    value={formatPercent(geralConversion.rate.current)} 
+                    subtext="Global" 
+                    color="text-brand-cyan"
+                    icon={<Icons.Target className="h-4 w-4 text-brand-cyan"/>}
+                />
+                 <CompactKpiCard 
+                    title="Pipeline" 
+                    value={formatCurrency(activeLeadsKpi.value)} 
+                    subtext={`${activeLeadsKpi.count} leads`} 
+                    color="text-brand-purple"
+                    icon={<Icons.Wallet className="h-4 w-4 text-brand-purple"/>}
+                />
+                 <CompactKpiCard 
+                    title="Ticket Médio" 
+                    value={formatCurrency(closedSales.avgTicket.current)} 
+                    subtext="Vendas" 
+                    icon={<Icons.BarChart className="h-4 w-4"/>}
+                />
+                <CompactKpiCard 
+                    title="Novos Leads" 
+                    value={formatNumber(totalLeadsKpi.count)} 
+                    subtext={`+${newLeadsTodayKpi.count} hoje`} 
+                    icon={<Icons.Users className="h-4 w-4"/>}
+                />
+            </div>
+
+            {/* ROW 3: Secondary Analysis (Forecast & Velocity) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {data.forecast && <ForecastSection data={data.forecast} />}
+                
+                <ChartCard title="Ciclo Médio de Vendas" loading={false} className="min-h-[300px]">
+                    <div className="flex flex-col sm:flex-row items-center justify-around h-full gap-6 sm:gap-0">
+                         <div className="text-center">
+                            <p className="text-sm text-text-secondary mb-1">Ciclo Total</p>
+                            <p className="text-4xl font-bold text-white">{velocity.avgTotalCycleTime.toFixed(0)} <span className="text-lg text-slate-400">dias</span></p>
+                         </div>
+                         <div className="h-px w-full sm:h-16 sm:w-px bg-slate-700"></div>
+                         <div className="space-y-3 w-full sm:w-auto">
+                            <p className="text-xs font-bold text-text-secondary uppercase mb-2 text-center sm:text-left">Por Responsável</p>
+                             {velocity.byResponsible.slice(0,3).map(r => (
+                                 <div key={r.name} className="flex justify-between items-center gap-4 text-sm bg-slate-800/30 p-2 rounded">
+                                     <span className="text-text-secondary truncate max-w-[120px]">{r.name}</span>
+                                     <span className="font-mono font-bold">{r.avgDays.toFixed(1)}d</span>
+                                 </div>
+                             ))}
+                         </div>
+                    </div>
+                </ChartCard>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-6">
+                {data.timeFunnel && <TimeFunnelSection data={data.timeFunnel} />}
+            </div>
+        </div>
     );
 
     return (
-        <div className="space-y-8">
-            <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                <KpiCard title="Total de Leads" count={formatNumber(totalLeadsKpi.count)} value={formatCurrency(totalLeadsKpi.value)} conversionRate={totalLeadsKpi.conversionToNext} conversionLabel="para prospecção"/>
-                <KpiCard title="Novos Leads Hoje" count={formatNumber(newLeadsTodayKpi.count)} value={formatCurrency(newLeadsTodayKpi.value)} icon={<Icons.CalendarDays/>} />
-                <KpiCard title="Leads Ativos (Pipeline)" count={formatNumber(activeLeadsKpi.count)} value={formatCurrency(activeLeadsKpi.value)} />
-                <KpiCard title="Em Prospecção" count={`${formatNumber(prospeccaoKpi.count)} leads`} value={formatCurrency(prospeccaoKpi.value)} conversionRate={prospeccaoKpi.conversion} />
-                <KpiCard title="Reunião de Proposta" count={`${formatNumber(propostaKpi.count)} leads`} value={formatCurrency(propostaKpi.value)} conversionRate={propostaKpi.conversion} />
-                <KpiCard title="Em Follow up" count={`${formatNumber(followUpKpi.count)} leads`} value={formatCurrency(followUpKpi.value)} conversionRate={followUpKpi.conversion} />
-                <KpiCard title="Em Negociação" count={`${formatNumber(negociacaoKpi.count)} leads`} value={formatCurrency(negociacaoKpi.value)} conversionRate={negociacaoKpi.conversion} />
-                <div className="bg-card border border-border rounded-xl p-4 flex flex-col h-full"><div className="flex items-center gap-2 text-sm font-semibold text-text-secondary mb-2"><Icons.CheckCircle className="text-brand-green" /><span>Vendas Fechadas</span></div><div className="flex-grow"><p className="text-3xl font-extrabold">{formatNumber(closedSales.count.current)} vendas</p><p className="text-lg font-bold text-slate-400">{formatCurrency(closedSales.value.current)}</p>{closedSales.lastSale && <div className="text-xs text-text-secondary mt-1">Última: {closedSales.lastSale.daysAgo.toFixed(0)}d atrás ({formatCurrency(closedSales.lastSale.value)})</div>}</div><div className="text-xs text-text-secondary mt-2"><span className="font-bold text-brand-cyan">{formatPercent(closedSales.conversion)}</span> da etapa anterior</div></div>
-                <KpiCard title="Leads Perdidos" count={`${formatNumber(lostLeads.count.current)} leads`} value={formatCurrency(lostLeads.value)} icon={<Icons.XCircle className="text-brand-red"/>}><div className="text-xs text-text-secondary mt-1">{lostLeads.topReasons.map(r => <p key={r.reason}>• {r.reason}: {r.count}</p>)}</div></KpiCard>
-                <KpiCard title="Taxa de Conversão Global" count={formatPercent(geralConversion.rate.current)} icon={<Icons.Target className={conversionRateColor}/>}><p className="text-xs text-text-secondary">{geralConversion.sales} vendas de {geralConversion.totalLeads} leads</p></KpiCard>
-            </section>
+        <div className="space-y-6">
+            <Tabs 
+                tabs={['Visão Geral', 'Campanhas Meta Ads', 'Time & Detalhes']} 
+                activeTab={activeTab} 
+                onTabClick={setActiveTab} 
+            />
+
+            {activeTab === 'Visão Geral' && renderOverview()}
             
-            <SmartAlert alert={data.alert} />
-
-            <ProspectingAnalysisSection data={data.prospecting} />
-            <FollowUpAnalysisSection data={data.followUp} />
-            {data.campaigns && <CampaignAnalysisSection data={data.campaigns} />}
-            {data.byResponsible && <ResponsibleAnalysisSection data={data.byResponsible} />}
-            {data.forecast && <ForecastSection data={data.forecast} />}
-
-            <section className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <ChartCard title="Funil de Conversão Detalhado" loading={false} className="lg:col-span-3" contentClassName="p-2">
-                    <VisualFunnel stages={data.visualFunnel.stages} conversions={data.visualFunnel.conversions} bottleneck={data.visualFunnel.bottleneck} opportunity={data.visualFunnel.opportunity} />
-                </ChartCard>
-                <div className="lg:col-span-2 space-y-6">
-                    {data.timeFunnel && <TimeFunnelSection data={data.timeFunnel} />}
-                    <ChartCard title="⏱️ Velocidade do Funil (Real)" loading={false}>
-                        <div className="text-center"><p className="text-sm text-text-secondary">Ciclo Total Médio</p><p className="text-3xl font-bold">{data.velocity.avgTotalCycleTime.toFixed(1)} dias</p></div>
-                        <div className="mt-4 pt-4 border-t border-border"><h4 className="font-semibold text-text-secondary text-sm mb-2">Velocidade por Responsável</h4><ul className="text-sm space-y-1">{data.velocity.byResponsible.map(r => <li key={r.name} className="flex justify-between"><span>• {r.name}:</span><span className="font-bold">{r.avgDays.toFixed(1)} dias</span></li>)}</ul></div>
-                    </ChartCard>
+            {activeTab === 'Campanhas Meta Ads' && data.campaigns && (
+                <div className="animate-fade-in-down pb-8">
+                    <CampaignAnalysisSection data={data.campaigns} />
                 </div>
-            </section>
-             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ChartCard title="Funil de Vendas por Status" loading={false}><SalesFunnelByStatusChart data={crmData} /></ChartCard>
-                <ChartCard title="📅 Distribuição de Fechamentos" loading={false}><Bar options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#33415540' } }, x: { ticks: { color: '#f8fafc' }, grid: { display: false } } }}} data={{ labels: data.velocity.salesByDayOfWeek.labels, datasets: [{ label: 'Vendas', data: data.velocity.salesByDayOfWeek.data, backgroundColor: '#8b5cf6' }]}} /></ChartCard>
-            </section>
+            )}
+
+            {activeTab === 'Time & Detalhes' && (
+                <div className="space-y-8 animate-fade-in-down pb-8">
+                    {data.byResponsible && <ResponsibleAnalysisSection data={data.byResponsible} />}
+                    
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-slate-200 uppercase tracking-wider">Base de Leads Detalhada</h2>
+                        <LeadsTable data={crmData} loading={false} />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ChartCard title="Funil por Status" loading={false} contentClassName="h-64 sm:h-72"><SalesFunnelByStatusChart data={crmData} /></ChartCard>
+                        <ChartCard title="Distribuição de Vendas (Semana)" loading={false} contentClassName="h-64 sm:h-72">
+                            <Bar options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#33415540' } }, x: { ticks: { color: '#f8fafc' }, grid: { display: false } } }}} data={{ labels: velocity.salesByDayOfWeek.labels, datasets: [{ label: 'Vendas', data: velocity.salesByDayOfWeek.data, backgroundColor: '#8b5cf6' }]}} />
+                        </ChartCard>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

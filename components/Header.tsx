@@ -35,33 +35,37 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="mb-6 space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-                <img src={logoBase64} alt="Lion Ads PRO CRM Logo" className="h-10 w-10" />
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-100">Lion Ads PRO CRM</h1>
+                <img src={logoBase64} alt="Lion Ads PRO CRM Logo" className="h-8 w-8 sm:h-10 sm:w-10" />
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-100">Lion Ads PRO CRM</h1>
             </div>
-            <div className="flex items-center w-full sm:w-auto justify-end gap-2 sm:gap-4">
-                <div className="text-right">
-                <p className="text-xs text-text-secondary">Última atualização</p>
-                <p className="text-sm font-semibold">{formatDate(lastUpdated)}</p>
-                </div>
-                <button
-                onClick={onRefresh}
-                disabled={loading}
-                className="p-2 bg-slate-700 rounded-full text-slate-300 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-50 disabled:cursor-wait transition-colors"
-                aria-label="Atualizar dados"
+            
+            <div className="flex flex-row-reverse md:flex-row items-center justify-between md:justify-end gap-3 sm:gap-4 w-full md:w-auto">
+                 <button
+                    onClick={onRefresh}
+                    disabled={loading}
+                    className="p-2 bg-slate-700 rounded-full text-slate-300 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-50 disabled:cursor-wait transition-colors"
+                    aria-label="Atualizar dados"
                 >
-                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
+                <div className="text-left md:text-right">
+                    <p className="text-[10px] sm:text-xs text-text-secondary">Última atualização</p>
+                    <p className="text-xs sm:text-sm font-semibold">{formatDate(lastUpdated)}</p>
+                </div>
             </div>
         </div>
-        <div className="flex items-center gap-2 border-t border-border pt-4 flex-wrap">
-            <FilterMenu 
-                startDate={startDate}
-                endDate={endDate}
-                onDateChange={onDateChange}
-                hasActiveFilter={hasActiveFilter}
-            />
+        
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+            <div className="w-full sm:w-auto">
+                <FilterMenu 
+                    startDate={startDate}
+                    endDate={endDate}
+                    onDateChange={onDateChange}
+                    hasActiveFilter={hasActiveFilter}
+                />
+            </div>
             <MultiSelectFilter 
               label="Tipo de Negócio"
               options={filterOptions.tipoNegocio}

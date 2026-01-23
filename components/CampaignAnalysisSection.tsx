@@ -19,21 +19,21 @@ const CampaignSummaryCard: React.FC<{title: string, value: string, change?: numb
     const ChangeIcon = (change !== undefined && isFinite(change)) ? (isPositive ? Icons.ArrowUpRight : Icons.ArrowDownRight) : null;
 
     return (
-        <div className="bg-card border-border border rounded-xl p-5 flex flex-col justify-between">
+        <div className="bg-card border-border border rounded-xl p-5 flex flex-col justify-between h-full">
             <div>
                 <div className="flex justify-between items-center text-text-secondary mb-1">
-                    <span className="text-sm font-semibold">{title}</span>
-                    {icon}
+                    <span className="text-sm font-semibold truncate">{title}</span>
+                    <span className="flex-shrink-0 ml-2">{icon}</span>
                 </div>
-                <p className="text-3xl font-extrabold text-text-main">{value}</p>
-                 {subValue && <p className="text-sm text-text-secondary">{subValue}</p>}
+                <p className="text-2xl sm:text-3xl font-extrabold text-text-main truncate">{value}</p>
+                 {subValue && <p className="text-xs sm:text-sm text-text-secondary truncate">{subValue}</p>}
                  {children}
             </div>
-            <div className="flex justify-between items-baseline text-xs mt-2">
-                <p className="text-text-secondary">{footer}</p>
+            <div className="flex justify-between items-baseline text-xs mt-3 pt-2 border-t border-border/30">
+                <p className="text-text-secondary truncate pr-2">{footer}</p>
                  {ChangeIcon && (
-                    <div className={`flex items-center font-bold ${changeColor}`}>
-                        <ChangeIcon className="h-4 w-4"/>
+                    <div className={`flex items-center font-bold ${changeColor} whitespace-nowrap`}>
+                        <ChangeIcon className="h-3 w-3 sm:h-4 sm:w-4"/>
                         <span>{isFinite(change!) ? `${change!.toFixed(0)}%` : 'Novo'}</span>
                     </div>
                  )}
@@ -45,7 +45,7 @@ const CampaignSummaryCard: React.FC<{title: string, value: string, change?: numb
 const PerformanceByCampaignChart: React.FC<{data: CampaignPerformanceData[]}> = ({data}) => {
     const configFactory = React.useCallback((): ChartConfiguration => {
         const chartData: ChartData = {
-            labels: data.map(c => c.name.substring(0,20) + (c.name.length > 20 ? '...' : '')),
+            labels: data.map(c => c.name.substring(0,15) + (c.name.length > 15 ? '...' : '')),
             datasets: [
                 { label: 'Investimento (R$)', data: data.map(c => c.investment), backgroundColor: '#3b82f6', yAxisID: 'y' },
                 { label: 'Leads Gerados', data: data.map(c => c.leads), backgroundColor: '#22c55e', yAxisID: 'y1' },
@@ -56,10 +56,10 @@ const PerformanceByCampaignChart: React.FC<{data: CampaignPerformanceData[]}> = 
             type: 'bar', data: chartData,
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } }, tooltip: { mode: 'index' } },
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10, font: {size: 10} } }, tooltip: { mode: 'index' } },
                 scales: {
                     x: { display: false },
-                    y: { grid: { color: '#33415520' }, ticks: { color: '#f8fafc', font: { size: 10 }} },
+                    y: { grid: { color: '#33415520' }, ticks: { color: '#f8fafc', font: { size: 10 }, autoSkip: false } },
                     y1: { display: false }
                 }
             }
@@ -90,14 +90,14 @@ const RoiBubbleChart: React.FC<{data: CampaignAnalysis['roiBubbleData']}> = ({da
                         callbacks: {
                             label: (context: any) => {
                                 const d = context.raw;
-                                return `${d.name}: ROI ${formatPercent(d.roi)}, CPL ${formatCurrency(d.x)}, Conv. ${formatPercent(d.y)}`;
+                                return `${d.name}: ROI ${formatPercent(d.roi)}`;
                             }
                         }
                     }
                 },
                 scales: {
-                    x: { title: { display: true, text: 'CPL (Custo por Lead)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => formatCurrency(v as number)} },
-                    y: { title: { display: true, text: 'Taxa de Conversão Lead -> Venda', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => formatPercent(v as number) } }
+                    x: { title: { display: true, text: 'CPL (R$)', color: '#94a3b8', font: {size: 10} }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => formatCurrency(v as number), font: {size: 10}} },
+                    y: { title: { display: true, text: 'Conv. %', color: '#94a3b8', font: {size: 10} }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: v => formatPercent(v as number), font: {size: 10} } }
                 }
             }
         }
@@ -105,33 +105,6 @@ const RoiBubbleChart: React.FC<{data: CampaignAnalysis['roiBubbleData']}> = ({da
      const canvasRef = useChart(configFactory, data);
      return <canvas ref={canvasRef} />
 };
-
-const CampaignEvolutionChart: React.FC<{data: CampaignAnalysis['evolutionData']}> = ({ data }) => {
-    const configFactory = React.useCallback((): ChartConfiguration => {
-        const chartData: ChartData = {
-            labels: data.labels,
-            datasets: [
-                { type: 'bar', label: 'Investimento', data: data.investment, backgroundColor: '#3b82f680', yAxisID: 'y' },
-                { type: 'line', label: 'Leads', data: data.leads, borderColor: '#22c55e', yAxisID: 'y1', tension: 0.3 },
-                { type: 'line', label: 'Vendas', data: data.sales, borderColor: '#f59e0b', yAxisID: 'y1', tension: 0.3 }
-            ]
-        };
-        return {
-            type: 'bar', data: chartData,
-            options: {
-                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } },
-                scales: {
-                    x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                    y: { type: 'linear', position: 'left', title: {display: true, text: 'R$', color: '#94a3b8'}, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
-                    y1: { type: 'linear', position: 'right', title: {display: true, text: 'Quantidade', color: '#94a3b8'}, grid: { drawOnChartArea: false }, ticks: { color: '#94a3b8' } }
-                }
-            }
-        }
-    }, [data]);
-    const canvasRef = useChart(configFactory, data);
-    return <canvas ref={canvasRef} />;
-}
 
 const CampaignsTable: React.FC<{data: CampaignPerformanceData[]}> = ({ data }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -157,28 +130,41 @@ const CampaignsTable: React.FC<{data: CampaignPerformanceData[]}> = ({ data }) =
     const getSortIndicator = (key: keyof CampaignPerformanceData) => sortConfig.key !== key ? '↕' : (sortConfig.direction === 'desc' ? '↓' : '↑');
     const getRowColor = (roi: number) => roi > 200 ? 'bg-green-500/10 hover:bg-green-500/20' : roi > 0 ? 'bg-yellow-500/10 hover:bg-yellow-500/20' : 'bg-red-500/10 hover:bg-red-500/20';
 
-    const headers: {key: keyof CampaignPerformanceData, label: string, isNum: boolean}[] = [
-        {key: 'name', label: 'Campanha', isNum: false}, {key: 'investment', label: 'Invest.', isNum: true}, {key: 'leads', label: 'Leads', isNum: true}, {key: 'cpl', label: 'CPL', isNum: true},
-        {key: 'sales', label: 'Vendas', isNum: true}, {key: 'wonValue', label: 'Valor', isNum: true}, {key: 'roi', label: 'ROI', isNum: true}, {key: 'avgTimeToSale', label: 'Tempo', isNum: true}, {key: 'topResponsible', label: 'Resp.', isNum: false}
+    const headers: {key: keyof CampaignPerformanceData, label: string, isNum: boolean, minWidth?: string}[] = [
+        {key: 'name', label: 'Campanha', isNum: false, minWidth: 'min-w-[150px]'}, 
+        {key: 'investment', label: 'Invest.', isNum: true}, 
+        {key: 'leads', label: 'Leads', isNum: true}, 
+        {key: 'cpl', label: 'CPL', isNum: true},
+        {key: 'sales', label: 'Vendas', isNum: true}, 
+        {key: 'wonValue', label: 'Valor', isNum: true}, 
+        {key: 'roi', label: 'ROI', isNum: true}, 
+        {key: 'avgTimeToSale', label: 'Tempo', isNum: true, minWidth: 'min-w-[80px]'}, 
+        {key: 'topResponsible', label: 'Resp.', isNum: false}
     ];
 
     return (
         <div className="bg-card border-border border rounded-xl p-4">
-            <input type="text" placeholder="Buscar campanha..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue" />
-            <div className="overflow-x-auto"><table className="w-full text-sm">
-                <thead className="text-left text-xs text-text-secondary uppercase"><tr>{headers.map(h => <th key={h.key} className={`p-2 cursor-pointer ${h.isNum ? 'text-right' : ''}`} onClick={() => requestSort(h.key)}>{h.label} <span className="text-gray-500">{getSortIndicator(h.key)}</span></th>)}</tr></thead>
-                <tbody>{sortedData.map(c => ( <tr key={c.name} className={`border-t border-border ${getRowColor(c.roi)}`}>
-                    <td className="p-2 font-semibold truncate max-w-xs">{c.name}</td>
-                    <td className="p-2 text-right font-mono">{formatCurrency(c.investment)}</td>
-                    <td className="p-2 text-right font-mono">{formatNumber(c.leads)}</td>
-                    <td className="p-2 text-right font-mono">{formatCurrency(c.cpl)}</td>
-                    <td className="p-2 text-right font-mono">{c.sales.toFixed(1)}</td>
-                    <td className="p-2 text-right font-mono">{formatCurrency(c.wonValue)}</td>
-                    <td className="p-2 text-right font-mono font-bold">{isFinite(c.roi) ? formatPercent(c.roi) : '∞'}</td>
-                    <td className="p-2 text-right font-mono">{c.avgTimeToSale ? `${c.avgTimeToSale.toFixed(1)}d` : 'N/A'}</td>
-                    <td className="p-2 truncate">{c.topResponsible || 'N/A'}</td>
-                </tr>))}</tbody>
-            </table></div>
+            <input type="text" placeholder="Buscar campanha..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm" />
+            <div className="overflow-x-auto custom-scrollbar pb-2">
+                <table className="w-full text-sm min-w-[800px]">
+                    <thead className="text-left text-xs text-text-secondary uppercase">
+                        <tr>{headers.map(h => <th key={h.key} className={`p-2 cursor-pointer ${h.isNum ? 'text-right' : ''} ${h.minWidth || ''}`} onClick={() => requestSort(h.key)}>{h.label} <span className="text-gray-500">{getSortIndicator(h.key)}</span></th>)}</tr>
+                    </thead>
+                    <tbody>
+                        {sortedData.map(c => ( <tr key={c.name} className={`border-t border-border ${getRowColor(c.roi)}`}>
+                            <td className="p-2 font-semibold truncate max-w-[200px]" title={c.name}>{c.name}</td>
+                            <td className="p-2 text-right font-mono">{formatCurrency(c.investment)}</td>
+                            <td className="p-2 text-right font-mono">{formatNumber(c.leads)}</td>
+                            <td className="p-2 text-right font-mono">{formatCurrency(c.cpl)}</td>
+                            <td className="p-2 text-right font-mono">{c.sales.toFixed(1)}</td>
+                            <td className="p-2 text-right font-mono">{formatCurrency(c.wonValue)}</td>
+                            <td className="p-2 text-right font-mono font-bold">{isFinite(c.roi) ? formatPercent(c.roi) : '∞'}</td>
+                            <td className="p-2 text-right font-mono">{c.avgTimeToSale ? `${c.avgTimeToSale.toFixed(1)}d` : 'N/A'}</td>
+                            <td className="p-2 truncate max-w-[100px]">{c.topResponsible || 'N/A'}</td>
+                        </tr>))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
@@ -194,19 +180,19 @@ const CampaignAnalysisSection: React.FC<{ data: CampaignAnalysis }> = ({ data })
                 <CampaignSummaryCard title="Leads Gerados" value={formatNumber(leads.current)} subValue={`CPL: ${formatCurrency(cpl.current)}`} change={leads.change} changeIsPositiveGood={true} footer="Das campanhas" icon={<Icons.Users className="h-5 w-5"/>}/>
                 <CampaignSummaryCard title="CPL Médio" value={formatCurrency(cpl.current)} change={cpl.change} changeIsPositiveGood={false} footer="Meta: R$ 5,00" icon={<Icons.BarChart className="h-5 w-5"/>}/>
                 <CampaignSummaryCard title="ROI de Vendas" value={isFinite(roi) ? formatPercent(roi) : '∞'} subValue={`Vendas: ${formatCurrency(wonValue)}`} footer={`${salesCount.toFixed(1)} vendas fechadas`} icon={<Icons.Target className="h-5 w-5"/>}>
-                    <p className="text-xs text-text-secondary mt-1">Tempo médio venda: {avgTimeToSale.toFixed(1)} dias</p>
+                    <p className="text-[10px] text-text-secondary mt-1">Ciclo médio: {avgTimeToSale.toFixed(1)} dias</p>
                 </CampaignSummaryCard>
             </div>
 
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ChartCard title="Performance por Campanha (Top 5 por Invest.)" loading={false} contentClassName="h-96"><PerformanceByCampaignChart data={data.topCampaignsByInvestment}/></ChartCard>
-                <ChartCard title="ROI por Campanha (Investimento vs Retorno)" loading={false} contentClassName="h-96"><RoiBubbleChart data={data.roiBubbleData}/></ChartCard>
+                <ChartCard title="Performance (Top 5 Investimento)" loading={false} contentClassName="h-80"><PerformanceByCampaignChart data={data.topCampaignsByInvestment}/></ChartCard>
+                <ChartCard title="Matriz ROI x Conversão" loading={false} contentClassName="h-80"><RoiBubbleChart data={data.roiBubbleData}/></ChartCard>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center"><h4 className="text-sm font-bold text-text-secondary mb-2">🏆 MELHOR CAMPANHA</h4><p className="font-bold text-brand-yellow text-lg truncate max-w-full">{bestCampaign?.name || 'N/A'}</p><p className="text-3xl font-extrabold my-2">{isFinite(bestCampaign?.roi ?? 0) ? formatPercent(bestCampaign?.roi ?? 0) : '∞'} ROI</p><p className="text-xs text-text-secondary">{formatCurrency(bestCampaign?.investment ?? 0)} → {formatCurrency(bestCampaign?.wonValue ?? 0)}</p></div>
-                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center"><h4 className="text-sm font-bold text-text-secondary mb-2">💵 CUSTO POR AQUISIÇÃO (CAC)</h4><p className="text-3xl font-extrabold my-2">{formatCurrency(cac)}</p><p className="text-xs text-text-secondary">LTV/CAC Ratio: {ltvCacRatio.toFixed(2)}x</p></div>
-                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center"><h4 className="text-sm font-bold text-text-secondary mb-2">📈 CONVERSÃO LEAD → VENDA</h4><p className="text-3xl font-extrabold my-2">{formatPercent(leadToSaleConversion.current)}</p><p className="text-xs text-text-secondary">{salesCount.toFixed(1)} vendas de {formatNumber(metaAdsLeadsCount)} leads</p></div>
+                <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Melhor Campanha (ROI)</h4><p className="font-bold text-brand-yellow text-lg truncate w-full px-2" title={bestCampaign?.name}>{bestCampaign?.name || 'N/A'}</p><p className="text-3xl font-extrabold my-2 text-white">{isFinite(bestCampaign?.roi ?? 0) ? formatPercent(bestCampaign?.roi ?? 0) : '∞'} ROI</p><p className="text-xs text-text-secondary">{formatCurrency(bestCampaign?.investment ?? 0)} → {formatCurrency(bestCampaign?.wonValue ?? 0)}</p></div>
+                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Custo Por Aquisição (CAC)</h4><p className="text-3xl font-extrabold my-2 text-white">{formatCurrency(cac)}</p><p className="text-xs text-text-secondary">LTV/CAC Ratio: <span className={ltvCacRatio > 3 ? 'text-green-400 font-bold' : 'text-text-main'}>{ltvCacRatio.toFixed(2)}x</span></p></div>
+                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Conversão Lead → Venda</h4><p className="text-3xl font-extrabold my-2 text-white">{formatPercent(leadToSaleConversion.current)}</p><p className="text-xs text-text-secondary">{salesCount.toFixed(1)} vendas de {formatNumber(metaAdsLeadsCount)} leads</p></div>
             </div>
 
             <CampaignsTable data={data.detailedCampaigns} />
