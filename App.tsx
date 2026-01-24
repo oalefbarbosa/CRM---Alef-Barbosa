@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import * as Icons from './components/Icons';
 import { DashboardSkeletons } from './components/DashboardSkeletons';
 import DashboardGeralView from './components/DashboardGeralView';
+import FinancialView from './components/FinancialView';
 
 
 const App: React.FC = () => {
@@ -215,7 +216,7 @@ const App: React.FC = () => {
                     : <DashboardGeralView data={dashboardGeralMetrics} crmData={filteredCrmData} />
                 )}
                 {currentView === 'objectives' && <PlaceholderView title="Objetivos" />}
-                {currentView === 'financial' && <PlaceholderView title="Financeiro" />}
+                {currentView === 'financial' && <FinancialView />}
                 {currentView === 'operation' && <PlaceholderView title="Operação" />}
                 {currentView === 'history' && <PlaceholderView title="Histórico" />}
               </>
