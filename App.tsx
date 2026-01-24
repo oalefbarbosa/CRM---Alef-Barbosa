@@ -4,6 +4,7 @@ import { CrmData, CampaignData, DashboardGeralMetrics, Theme } from './types';
 import { loadCRM, loadCampanhas } from './services/dataService';
 import { calculateDashboardGeralMetrics } from './utils/calculations';
 import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 import * as Icons from './components/Icons';
 import { DashboardSkeletons } from './components/DashboardSkeletons';
 import DashboardGeralView from './components/DashboardGeralView';
@@ -16,6 +17,10 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
+  // Navigation State
+  const [currentView, setCurrentView] = useState('crm');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Theme State - Default to 'light'
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -143,51 +148,80 @@ const App: React.FC = () => {
   
   const hasActiveNonDateFilter = filters.tipoNegocio.length > 0 || filters.source.length > 0 || filters.status.length > 0;
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background text-text-main flex flex-col items-center justify-center p-4">
-        <div className="bg-card p-8 rounded-xl border border-border text-center">
-          <Icons.AlertTriangle className="mx-auto h-12 w-12 text-brand-red mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Ocorreu um Erro</h2>
-          <p className="text-text-secondary mb-6">{error}</p>
-          <button
-            onClick={fetchData}
-            className="bg-brand-blue text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-500 transition-colors"
-          >
-            Tentar Novamente
-          </button>
-        </div>
+  const PlaceholderView: React.FC<{title: string}> = ({title}) => (
+    <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in-down">
+      <div className="bg-card p-8 rounded-full mb-6 border border-border">
+         <Icons.Briefcase className="h-16 w-16 text-text-secondary opacity-50" />
       </div>
-    );
-  }
+      <h2 className="text-3xl font-bold text-text-main mb-2">{title}</h2>
+      <p className="text-text-secondary">Esta seção está em desenvolvimento.</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text-main p-4 sm:p-6 lg:p-8 transition-colors duration-300">
-      <div className="max-w-screen-2xl mx-auto">
-        <Header 
-          lastUpdated={lastUpdated} 
-          onRefresh={fetchData} 
-          loading={loading}
-          startDate={dateRange.startDate}
-          endDate={dateRange.endDate}
-          onDateChange={handleDateChange}
-          hasActiveFilter={!!(dateRange.startDate || dateRange.endDate) || hasActiveNonDateFilter}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          filterOptions={{
-            tipoNegocio: uniqueTipoNegocio,
-            source: uniqueSource,
-            status: uniqueStatus,
-          }}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
-        <main>
-          {loading || !dashboardGeralMetrics 
-            ? <DashboardSkeletons /> 
-            : <DashboardGeralView data={dashboardGeralMetrics} crmData={filteredCrmData} />
-          }
-        </main>
+    <div className="min-h-screen bg-background font-sans text-text-main transition-colors duration-300 flex">
+      {/* Sidebar */}
+      <Sidebar 
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 md:ml-64 p-4 sm:p-6 lg:p-8 min-h-screen overflow-x-hidden">
+        <div className="max-w-screen-2xl mx-auto">
+          {/* Header serves as the top toolbar now */}
+          <Header 
+            lastUpdated={lastUpdated} 
+            onRefresh={fetchData} 
+            loading={loading}
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+            onDateChange={handleDateChange}
+            hasActiveFilter={!!(dateRange.startDate || dateRange.endDate) || hasActiveNonDateFilter}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            filterOptions={{
+              tipoNegocio: uniqueTipoNegocio,
+              source: uniqueSource,
+              status: uniqueStatus,
+            }}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
+          />
+
+          <main className="mt-6">
+            {error && (
+              <div className="bg-card p-8 rounded-xl border border-border text-center mb-6">
+                <Icons.AlertTriangle className="mx-auto h-12 w-12 text-brand-red mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Ocorreu um Erro</h2>
+                <p className="text-text-secondary mb-6">{error}</p>
+                <button
+                  onClick={fetchData}
+                  className="bg-brand-blue text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-500 transition-colors"
+                >
+                  Tentar Novamente
+                </button>
+              </div>
+            )}
+
+            {!error && (
+              <>
+                {currentView === 'crm' && (
+                   loading || !dashboardGeralMetrics 
+                    ? <DashboardSkeletons /> 
+                    : <DashboardGeralView data={dashboardGeralMetrics} crmData={filteredCrmData} />
+                )}
+                {currentView === 'objectives' && <PlaceholderView title="Objetivos" />}
+                {currentView === 'financial' && <PlaceholderView title="Financeiro" />}
+                {currentView === 'operation' && <PlaceholderView title="Operação" />}
+                {currentView === 'history' && <PlaceholderView title="Histórico" />}
+              </>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

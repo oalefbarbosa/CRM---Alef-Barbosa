@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { RefreshCw, Sun, Moon } from './Icons';
+import { RefreshCw, Sun, Moon, LayoutGrid } from './Icons';
 import { formatDate } from '../utils/formatters';
 import FilterMenu from './FilterMenu';
 import MultiSelectFilter from './MultiSelectFilter';
@@ -19,6 +19,7 @@ interface HeaderProps {
   filterOptions: { tipoNegocio: string[], source: string[], status: string[] };
   theme: Theme;
   onToggleTheme: () => void;
+  onOpenSidebar: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -33,26 +34,25 @@ const Header: React.FC<HeaderProps> = ({
   onFilterChange,
   filterOptions,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  onOpenSidebar
 }) => {
   return (
     <header className="mb-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-                {/* Logo ARC Café & Estratégia */}
-                <div className="flex flex-col items-start leading-none select-none">
-                    <h1 className="text-4xl sm:text-5xl font-serif font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-amber-600 via-yellow-400 to-amber-600 drop-shadow-sm">
-                        ARC
-                    </h1>
-                    <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-[0.25em] font-medium pl-1">
-                        café & estratégia
-                    </span>
-                </div>
-                
-                <div className="hidden sm:block h-10 w-px bg-border mx-2"></div>
-                
-                <div className="hidden sm:block">
-                     <h2 className="text-xl font-bold text-text-main leading-tight">Dashboard CRM</h2>
+                {/* Mobile Menu Button */}
+                <button 
+                  onClick={onOpenSidebar}
+                  className="md:hidden p-2 -ml-2 text-text-secondary hover:text-text-main"
+                  aria-label="Menu"
+                >
+                  <LayoutGrid className="h-6 w-6" />
+                </button>
+
+                {/* Page Title (Since logo is in sidebar now) */}
+                <div className="block">
+                     <h2 className="text-xl sm:text-2xl font-bold text-text-main leading-tight">Dashboard CRM</h2>
                      <p className="text-xs text-text-secondary">Performance & Controle</p>
                 </div>
             </div>
