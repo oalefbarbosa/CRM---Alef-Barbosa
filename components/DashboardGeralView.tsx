@@ -26,8 +26,8 @@ const ActionCenter: React.FC<{
 }> = ({ alert, prospecting, followUp }) => {
     return (
         <div className="bg-card border border-border rounded-xl p-0 overflow-hidden h-full flex flex-col min-h-[300px]">
-            <div className="p-4 border-b border-border bg-slate-800/50">
-                <h3 className="font-bold text-lg flex items-center gap-2 text-white">
+            <div className="p-4 border-b border-border bg-bg-subtle/50">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-text-main">
                     <Icons.AlertTriangle className="text-brand-orange" />
                     Centro de Ação
                 </h3>
@@ -37,18 +37,18 @@ const ActionCenter: React.FC<{
                 {/* 1. Global Alert */}
                 {alert && alert.type === 'critical' && (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-red-200 font-bold text-sm mb-1">{alert.title}</p>
-                        <p className="text-red-300 text-xs">{alert.message}</p>
-                        {alert.valueAtRisk && <p className="text-red-100 font-bold text-xs mt-2">{formatCurrency(alert.valueAtRisk)} em risco</p>}
+                        <p className="text-red-500 font-bold text-sm mb-1">{alert.title}</p>
+                        <p className="text-red-400 text-xs">{alert.message}</p>
+                        {alert.valueAtRisk && <p className="text-red-500 font-bold text-xs mt-2">{formatCurrency(alert.valueAtRisk)} em risco</p>}
                     </div>
                 )}
 
                 {/* 2. Prospecting Risks */}
                 {(prospecting.atRisk.notApproached > 0 || prospecting.atRisk.lastAttempt > 0) && (
-                     <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                     <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-bg-subtle/30">
                         <div>
-                            <p className="text-sm font-semibold text-slate-200">Leads Sem Contato</p>
-                            <p className="text-xs text-slate-400">Parados na prospecção</p>
+                            <p className="text-sm font-semibold text-text-main">Leads Sem Contato</p>
+                            <p className="text-xs text-text-secondary">Parados na prospecção</p>
                         </div>
                         <div className="text-right">
                              <p className="text-xl font-bold text-brand-orange">{prospecting.atRisk.total}</p>
@@ -59,10 +59,10 @@ const ActionCenter: React.FC<{
 
                 {/* 3. Follow Up Urgency */}
                 {(followUp.urgent.lastFup.count > 0 || followUp.urgent.stale7days > 0) && (
-                     <div className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                     <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-bg-subtle/30">
                         <div>
-                            <p className="text-sm font-semibold text-slate-200">Follow-Ups Atrasados</p>
-                            <p className="text-xs text-slate-400">Leads esfriando</p>
+                            <p className="text-sm font-semibold text-text-main">Follow-Ups Atrasados</p>
+                            <p className="text-xs text-text-secondary">Leads esfriando</p>
                         </div>
                          <div className="text-right">
                              <p className="text-xl font-bold text-brand-red">{followUp.urgent.stale7days + followUp.urgent.lastFup.count}</p>
@@ -72,7 +72,7 @@ const ActionCenter: React.FC<{
                 )}
 
                 {!alert && prospecting.atRisk.total === 0 && followUp.urgent.stale7days === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-60 min-h-[150px]">
+                    <div className="h-full flex flex-col items-center justify-center text-text-secondary opacity-60 min-h-[150px]">
                         <Icons.CheckCircle className="h-12 w-12 mb-2" />
                         <p>Tudo sob controle!</p>
                     </div>
@@ -177,15 +177,15 @@ const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({ data, crmData }
                     <div className="flex flex-col sm:flex-row items-center justify-around h-full gap-6 sm:gap-0">
                          <div className="text-center">
                             <p className="text-sm text-text-secondary mb-1">Ciclo Total</p>
-                            <p className="text-4xl font-bold text-white">{velocity.avgTotalCycleTime.toFixed(0)} <span className="text-lg text-slate-400">dias</span></p>
+                            <p className="text-4xl font-bold text-text-main">{velocity.avgTotalCycleTime.toFixed(0)} <span className="text-lg text-text-secondary">dias</span></p>
                          </div>
-                         <div className="h-px w-full sm:h-16 sm:w-px bg-slate-700"></div>
+                         <div className="h-px w-full sm:h-16 sm:w-px bg-border"></div>
                          <div className="space-y-3 w-full sm:w-auto">
                             <p className="text-xs font-bold text-text-secondary uppercase mb-2 text-center sm:text-left">Por Responsável</p>
                              {velocity.byResponsible.slice(0,3).map(r => (
-                                 <div key={r.name} className="flex justify-between items-center gap-4 text-sm bg-slate-800/30 p-2 rounded">
+                                 <div key={r.name} className="flex justify-between items-center gap-4 text-sm bg-bg-subtle/50 p-2 rounded border border-border/50">
                                      <span className="text-text-secondary truncate max-w-[120px]">{r.name}</span>
-                                     <span className="font-mono font-bold">{r.avgDays.toFixed(1)}d</span>
+                                     <span className="font-mono font-bold text-text-main">{r.avgDays.toFixed(1)}d</span>
                                  </div>
                              ))}
                          </div>
@@ -220,14 +220,14 @@ const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({ data, crmData }
                     {data.byResponsible && <ResponsibleAnalysisSection data={data.byResponsible} />}
                     
                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-slate-200 uppercase tracking-wider">Base de Leads Detalhada</h2>
+                        <h2 className="text-xl font-bold text-text-main uppercase tracking-wider">Base de Leads Detalhada</h2>
                         <LeadsTable data={crmData} loading={false} />
                     </div>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <ChartCard title="Funil por Status" loading={false} contentClassName="h-64 sm:h-72"><SalesFunnelByStatusChart data={crmData} /></ChartCard>
                         <ChartCard title="Distribuição de Vendas (Semana)" loading={false} contentClassName="h-64 sm:h-72">
-                            <Bar options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#33415540' } }, x: { ticks: { color: '#f8fafc' }, grid: { display: false } } }}} data={{ labels: velocity.salesByDayOfWeek.labels, datasets: [{ label: 'Vendas', data: velocity.salesByDayOfWeek.data, backgroundColor: '#8b5cf6' }]}} />
+                            <Bar options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: '#33415540' } }, x: { ticks: { color: '#64748b' }, grid: { display: false } } }}} data={{ labels: velocity.salesByDayOfWeek.labels, datasets: [{ label: 'Vendas', data: velocity.salesByDayOfWeek.data, backgroundColor: '#8b5cf6' }]}} />
                         </ChartCard>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { CrmData, CampaignData, DashboardGeralMetrics } from './types';
+import { CrmData, CampaignData, DashboardGeralMetrics, Theme } from './types';
 import { loadCRM, loadCampanhas } from './services/dataService';
 import { calculateDashboardGeralMetrics } from './utils/calculations';
 import Header from './components/Header';
@@ -15,6 +15,30 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  
+  // Theme State - Default to 'light'
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = window.localStorage.getItem('theme');
+        if (stored === 'light' || stored === 'dark') return stored;
+    }
+    return 'light'; // Default is now light
+  });
+
+  // Apply Theme Effect
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+    } else {
+        root.removeAttribute('data-theme');
+    }
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
   
   const [dateRange, setDateRange] = useState<{startDate: Date | null, endDate: Date | null}>(() => {
     const endDate = new Date();
@@ -138,7 +162,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans text-text-main p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-background font-sans text-text-main p-4 sm:p-6 lg:p-8 transition-colors duration-300">
       <div className="max-w-screen-2xl mx-auto">
         <Header 
           lastUpdated={lastUpdated} 
@@ -155,6 +179,8 @@ const App: React.FC = () => {
             source: uniqueSource,
             status: uniqueStatus,
           }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         <main>
           {loading || !dashboardGeralMetrics 

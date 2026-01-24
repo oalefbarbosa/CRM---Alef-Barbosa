@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useChart } from './BaseChart';
 import { CrmData } from '../../types';
 import type { ChartConfiguration, ChartData } from 'chart.js';
@@ -21,6 +21,27 @@ const statusColors: { [key: string]: string } = {
 };
 
 const SalesFunnelByStatusChart: React.FC<SalesFunnelByStatusChartProps> = ({ data }) => {
+    // Detect theme change to update chart colors
+    const [textColor, setTextColor] = useState('#94a3b8');
+    const [gridColor, setGridColor] = useState('#334155');
+
+    useEffect(() => {
+        const updateColors = () => {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            setTextColor(isLight ? '#64748b' : '#94a3b8');
+            setGridColor(isLight ? '#e2e8f0' : '#334155');
+        };
+        
+        // Initial set
+        updateColors();
+
+        // Observer for theme attribute changes
+        const observer = new MutationObserver(updateColors);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+        return () => observer.disconnect();
+    }, []);
+
     const processData = useCallback((crmData: CrmData[]) => {
         const statusCounts = crmData.reduce((acc, lead) => {
             const status = lead.status || 'leads';
@@ -50,7 +71,7 @@ const SalesFunnelByStatusChart: React.FC<SalesFunnelByStatusChartProps> = ({ dat
                 label: 'Leads',
                 data: counts,
                 backgroundColor: colors,
-                borderColor: '#334155',
+                borderColor: gridColor,
                 borderWidth: 1,
                 borderRadius: 4,
             }],
@@ -66,24 +87,26 @@ const SalesFunnelByStatusChart: React.FC<SalesFunnelByStatusChartProps> = ({ dat
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleColor: '#f8fafc',
-                        bodyColor: '#94a3b8',
+                        backgroundColor: gridColor === '#e2e8f0' ? '#ffffff' : '#1e293b',
+                        titleColor: gridColor === '#e2e8f0' ? '#0f172a' : '#f8fafc',
+                        bodyColor: textColor,
+                        borderColor: gridColor,
+                        borderWidth: 1,
                     },
                 },
                 scales: {
                     x: {
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8' },
+                        grid: { color: gridColor },
+                        ticks: { color: textColor },
                     },
                     y: {
                         grid: { display: false },
-                        ticks: { color: '#f8fafc', font: { size: 10 } },
+                        ticks: { color: textColor, font: { size: 10 } },
                     },
                 },
             },
         };
-    }, [data, processData]);
+    }, [data, processData, textColor, gridColor]);
 
     const canvasRef = useChart(configFactory, data);
 

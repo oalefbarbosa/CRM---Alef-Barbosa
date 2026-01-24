@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { CrmData } from '../../types';
-import { formatCurrency, formatDateSimple } from '../../utils/formatters';
+import { formatCurrency, formatNumber, formatPercent, formatDateSimple } from '../../utils/formatters';
 import { Flame, Thermometer, Snowflake, ChevronRight, ChevronLeft } from '../Icons';
 
 interface LeadsTableProps {
@@ -10,12 +10,12 @@ interface LeadsTableProps {
 }
 
 const statusColorMap: { [key: string]: string } = {
-  'ganho': 'bg-green-500/20 text-green-400',
-  'perdido': 'bg-red-500/20 text-red-400',
-  'em prospecção': 'bg-blue-500/20 text-blue-400',
-  'reunião de proposta': 'bg-purple-500/20 text-purple-400',
-  'em follow up': 'bg-orange-500/20 text-orange-400',
-  'leads': 'bg-slate-500/20 text-slate-400',
+  'ganho': 'bg-green-500/20 text-green-500',
+  'perdido': 'bg-red-500/20 text-red-500',
+  'em prospecção': 'bg-blue-500/20 text-blue-500',
+  'reunião de proposta': 'bg-purple-500/20 text-purple-500',
+  'em follow up': 'bg-orange-500/20 text-orange-500',
+  'leads': 'bg-slate-500/20 text-slate-500',
 };
 
 const getTemperatureIcon = (temp: string) => {
@@ -74,7 +74,7 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ data, loading }) => {
             setSearchTerm(e.target.value);
             setCurrentPage(1);
           }}
-          className="w-full max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+          className="w-full max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue text-text-main"
         />
       </div>
       <div className="overflow-x-auto">
@@ -91,7 +91,7 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ data, loading }) => {
           </div>
           <div className="text-sm text-text-main">
             {loading ? <TableSkeleton /> : paginatedData.map(lead => (
-              <div key={lead.id} className="border-b border-border last:border-b-0 hover:bg-slate-800/50 transition-colors">
+              <div key={lead.id} className="border-b border-border last:border-b-0 hover:bg-bg-subtle transition-colors">
                 {/* Desktop View */}
                 <div className="hidden sm:grid grid-cols-7 gap-4 items-center py-4 px-6">
                   <div className="font-semibold truncate">{lead.nome}</div>
@@ -146,14 +146,14 @@ const LeadsTable: React.FC<LeadsTableProps> = ({ data, loading }) => {
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-2 bg-card border border-border rounded-lg hover:bg-bg-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-3 py-2 bg-slate-700 rounded-lg hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-2 bg-card border border-border rounded-lg hover:bg-bg-subtle disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

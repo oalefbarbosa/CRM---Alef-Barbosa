@@ -10,6 +10,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      /* CSS Variables for Theming */
+      :root {
+        /* Default Light Theme */
+        --color-background: #f8fafc; /* slate-50 */
+        --color-card: #ffffff;       /* white */
+        --color-border: #e2e8f0;     /* slate-200 */
+        --color-text-main: #0f172a;  /* slate-900 */
+        --color-text-secondary: #64748b; /* slate-500 */
+        --color-bg-subtle: #f1f5f9;  /* slate-100 - used for list items/strips in light mode */
+      }
+
+      :root[data-theme="dark"] {
+        /* Dark Theme Override */
+        --color-background: #0f172a; /* slate-900 */
+        --color-card: #1e293b;       /* slate-800 */
+        --color-border: #334155;     /* slate-700 */
+        --color-text-main: #f8fafc;  /* slate-50 */
+        --color-text-secondary: #94a3b8; /* slate-400 */
+        --color-bg-subtle: #1e293b; /* slate-800/50 equivalent usually handled via opacity in tailwind, but here for consistency */
+      }
+
       @keyframes fade-in-down {
         0% {
             opacity: 0;
@@ -38,11 +59,12 @@
               sans: ['Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
-              background: '#0f172a',
-              card: '#1e293b',
-              border: '#334155',
-              'text-main': '#f8fafc',
-              'text-secondary': '#94a3b8',
+              background: 'var(--color-background)',
+              card: 'var(--color-card)',
+              border: 'var(--color-border)',
+              'text-main': 'var(--color-text-main)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'bg-subtle': 'var(--color-bg-subtle)',
               'brand-blue': '#3b82f6',
               'brand-cyan': '#22d3d8',
               'brand-green': '#22c55e',
@@ -71,7 +93,7 @@
 }
 </script>
 </head>
-  <body class="bg-background">
+  <body class="bg-background text-text-main transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

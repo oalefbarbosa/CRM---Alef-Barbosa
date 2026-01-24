@@ -59,7 +59,7 @@ const PerformanceByCampaignChart: React.FC<{data: CampaignPerformanceData[]}> = 
                 plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 10, font: {size: 10} } }, tooltip: { mode: 'index' } },
                 scales: {
                     x: { display: false },
-                    y: { grid: { color: '#33415520' }, ticks: { color: '#f8fafc', font: { size: 10 }, autoSkip: false } },
+                    y: { grid: { color: '#33415520' }, ticks: { color: '#94a3b8', font: { size: 10 }, autoSkip: false } },
                     y1: { display: false }
                 }
             }
@@ -144,7 +144,7 @@ const CampaignsTable: React.FC<{data: CampaignPerformanceData[]}> = ({ data }) =
 
     return (
         <div className="bg-card border-border border rounded-xl p-4">
-            <input type="text" placeholder="Buscar campanha..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm" />
+            <input type="text" placeholder="Buscar campanha..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:max-w-xs bg-background border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm text-text-main" />
             <div className="overflow-x-auto custom-scrollbar pb-2">
                 <table className="w-full text-sm min-w-[800px]">
                     <thead className="text-left text-xs text-text-secondary uppercase">
@@ -152,15 +152,15 @@ const CampaignsTable: React.FC<{data: CampaignPerformanceData[]}> = ({ data }) =
                     </thead>
                     <tbody>
                         {sortedData.map(c => ( <tr key={c.name} className={`border-t border-border ${getRowColor(c.roi)}`}>
-                            <td className="p-2 font-semibold truncate max-w-[200px]" title={c.name}>{c.name}</td>
-                            <td className="p-2 text-right font-mono">{formatCurrency(c.investment)}</td>
-                            <td className="p-2 text-right font-mono">{formatNumber(c.leads)}</td>
-                            <td className="p-2 text-right font-mono">{formatCurrency(c.cpl)}</td>
-                            <td className="p-2 text-right font-mono">{c.sales.toFixed(1)}</td>
-                            <td className="p-2 text-right font-mono">{formatCurrency(c.wonValue)}</td>
-                            <td className="p-2 text-right font-mono font-bold">{isFinite(c.roi) ? formatPercent(c.roi) : '∞'}</td>
-                            <td className="p-2 text-right font-mono">{c.avgTimeToSale ? `${c.avgTimeToSale.toFixed(1)}d` : 'N/A'}</td>
-                            <td className="p-2 truncate max-w-[100px]">{c.topResponsible || 'N/A'}</td>
+                            <td className="p-2 font-semibold truncate max-w-[200px] text-text-main" title={c.name}>{c.name}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{formatCurrency(c.investment)}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{formatNumber(c.leads)}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{formatCurrency(c.cpl)}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{c.sales.toFixed(1)}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{formatCurrency(c.wonValue)}</td>
+                            <td className="p-2 text-right font-mono font-bold text-text-main">{isFinite(c.roi) ? formatPercent(c.roi) : '∞'}</td>
+                            <td className="p-2 text-right font-mono text-text-main">{c.avgTimeToSale ? `${c.avgTimeToSale.toFixed(1)}d` : 'N/A'}</td>
+                            <td className="p-2 truncate max-w-[100px] text-text-main">{c.topResponsible || 'N/A'}</td>
                         </tr>))}
                     </tbody>
                 </table>
@@ -173,7 +173,7 @@ const CampaignAnalysisSection: React.FC<{ data: CampaignAnalysis }> = ({ data })
     const { investment, leads, cpl, roi, salesCount, wonValue, bestCampaign, cac, ltvCacRatio, leadToSaleConversion, metaAdsLeadsCount, avgTimeToSale } = data;
     return (
         <section className="space-y-8">
-            <h2 className="text-xl font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">📊 Análise de Campanhas Meta Ads</h2>
+            <h2 className="text-xl font-bold text-text-main uppercase tracking-wider flex items-center gap-2">📊 Análise de Campanhas Meta Ads</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <CampaignSummaryCard title="Investimento" value={formatCurrency(investment.current)} change={investment.change} changeIsPositiveGood={false} footer={`Em ${data.detailedCampaigns.length} campanhas`} icon={<Icons.DollarSign className="h-5 w-5"/>}/>
@@ -190,9 +190,9 @@ const CampaignAnalysisSection: React.FC<{ data: CampaignAnalysis }> = ({ data })
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Melhor Campanha (ROI)</h4><p className="font-bold text-brand-yellow text-lg truncate w-full px-2" title={bestCampaign?.name}>{bestCampaign?.name || 'N/A'}</p><p className="text-3xl font-extrabold my-2 text-white">{isFinite(bestCampaign?.roi ?? 0) ? formatPercent(bestCampaign?.roi ?? 0) : '∞'} ROI</p><p className="text-xs text-text-secondary">{formatCurrency(bestCampaign?.investment ?? 0)} → {formatCurrency(bestCampaign?.wonValue ?? 0)}</p></div>
-                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Custo Por Aquisição (CAC)</h4><p className="text-3xl font-extrabold my-2 text-white">{formatCurrency(cac)}</p><p className="text-xs text-text-secondary">LTV/CAC Ratio: <span className={ltvCacRatio > 3 ? 'text-green-400 font-bold' : 'text-text-main'}>{ltvCacRatio.toFixed(2)}x</span></p></div>
-                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Conversão Lead → Venda</h4><p className="text-3xl font-extrabold my-2 text-white">{formatPercent(leadToSaleConversion.current)}</p><p className="text-xs text-text-secondary">{salesCount.toFixed(1)} vendas de {formatNumber(metaAdsLeadsCount)} leads</p></div>
+                <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Melhor Campanha (ROI)</h4><p className="font-bold text-brand-yellow text-lg truncate w-full px-2" title={bestCampaign?.name}>{bestCampaign?.name || 'N/A'}</p><p className="text-3xl font-extrabold my-2 text-text-main">{isFinite(bestCampaign?.roi ?? 0) ? formatPercent(bestCampaign?.roi ?? 0) : '∞'} ROI</p><p className="text-xs text-text-secondary">{formatCurrency(bestCampaign?.investment ?? 0)} → {formatCurrency(bestCampaign?.wonValue ?? 0)}</p></div>
+                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Custo Por Aquisição (CAC)</h4><p className="text-3xl font-extrabold my-2 text-text-main">{formatCurrency(cac)}</p><p className="text-xs text-text-secondary">LTV/CAC Ratio: <span className={ltvCacRatio > 3 ? 'text-green-500 font-bold' : 'text-text-main'}>{ltvCacRatio.toFixed(2)}x</span></p></div>
+                 <div className="bg-card border-border border rounded-xl p-5 text-center flex flex-col items-center justify-center min-h-[160px]"><h4 className="text-xs font-bold text-text-secondary mb-2 uppercase">Conversão Lead → Venda</h4><p className="text-3xl font-extrabold my-2 text-text-main">{formatPercent(leadToSaleConversion.current)}</p><p className="text-xs text-text-secondary">{salesCount.toFixed(1)} vendas de {formatNumber(metaAdsLeadsCount)} leads</p></div>
             </div>
 
             <CampaignsTable data={data.detailedCampaigns} />

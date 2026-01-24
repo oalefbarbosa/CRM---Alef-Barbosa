@@ -1,4 +1,6 @@
 
+export type Theme = 'light' | 'dark';
+
 export interface CrmData {
   id: string;
   nome: string;
