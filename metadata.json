@@ -1,5 +1,5 @@
 {
-  "name": "ARC Assessoria CRM & Campanhas Dashboard",
+  "name": "ARC | Sistema",
   "description": "A comprehensive dashboard for CRM and Campaign Performance for ARC Assessoria, loading real-time data from Google Sheets.",
   "requestFramePermissions": []
 }

@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Plus, DollarSign, TrendingUp, TrendingDown, Wallet } from './Icons';
 import FinancialFormModal from './FinancialFormModal';
-import KpiCard from './KpiCard';
 
 const FinancialView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

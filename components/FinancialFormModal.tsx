@@ -59,9 +59,16 @@ const FinancialFormModal: React.FC<FinancialFormModalProps> = ({ isOpen, onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    // Explicit client-side validation
+    if (!formData.cliente_projeto || !formData.descricao || !formData.valor || Number(formData.valor) <= 0) {
+      setError('Por favor, preencha os campos obrigatórios (*): Cliente/Projeto, Descrição e Valor (deve ser maior que zero).');
+      return;
+    }
+
+    setLoading(true);
+    
     const transaction = {
         ...formData,
         valor: Number(formData.valor) // Ensure number
@@ -69,7 +76,7 @@ const FinancialFormModal: React.FC<FinancialFormModalProps> = ({ isOpen, onClose
 
     const result = await sendFinancialTransaction(transaction);
 
-    if (result) {
+    if (result.success) {
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -90,7 +97,7 @@ const FinancialFormModal: React.FC<FinancialFormModalProps> = ({ isOpen, onClose
         });
       }, 2000);
     } else {
-      setError('Erro ao registrar lançamento. Verifique sua conexão e tente novamente.');
+      setError(result.error || 'Erro ao registrar lançamento. Tente novamente.');
     }
     setLoading(false);
   };
@@ -121,8 +128,8 @@ const FinancialFormModal: React.FC<FinancialFormModalProps> = ({ isOpen, onClose
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             
             {error && (
-                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg flex items-center gap-3 text-red-500">
-                    <AlertTriangle className="h-5 w-5" />
+                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg flex items-center gap-3 text-red-500 text-sm">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
                     <span>{error}</span>
                 </div>
             )}
