@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { CrmData, FunnelConfig, Projections } from '../types';
+import { CrmData, FunnelConfig, Projections, ScenarioSetting, ScenarioType } from '../types';
 import { calculateAllProjections } from '../utils/objectiveCalculations';
 import DefineGoalsView from './objectives/DefineGoalsView';
-import TrackPerformanceView from './objectives/TrackPerformanceView';
+import TrackYearView from './objectives/TrackYearView';
+import CurrentMonthView from './objectives/CurrentMonthView';
 import Tabs from './Tabs';
 
 // Default configuration values
-const DEFAULT_CONFIG: Omit<FunnelConfig, 'ano'> = {
+const DEFAULT_FUNNEL_CONFIG: Omit<FunnelConfig, 'ano'> = {
   faturamento_anual_meta: 600000,
   ticket_medio: 2500,
   clientes_atuais: 10,
@@ -18,69 +19,93 @@ const DEFAULT_CONFIG: Omit<FunnelConfig, 'ano'> = {
   taxa_conversao: 30,
 };
 
+const DEFAULT_SCENARIO_SETTINGS: ScenarioSetting[] = [
+    { name: 'inicial', churn: 10, adicao_mensal: 5 },
+    { name: 'bom', churn: 10, adicao_mensal: 7 },
+    { name: 'otimo', churn: 12, adicao_mensal: 9 },
+];
+
 const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => {
-  const [activeTab, setActiveTab] = useState('Definir Metas');
+  const TABS = ['🎯 Definir Metas', '📅 Mês Atual', '📊 Acompanhar Ano'];
+  const [activeTab, setActiveTab] = useState(TABS[0]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [config, setConfig] = useState<FunnelConfig>({ ...DEFAULT_CONFIG, ano: selectedYear });
+  
+  const [funnelConfig, setFunnelConfig] = useState<FunnelConfig>({ ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
+  const [scenarioSettings, setScenarioSettings] = useState<ScenarioSetting[]>(DEFAULT_SCENARIO_SETTINGS);
   const [projections, setProjections] = useState<Projections | null>(null);
 
   // Load config from localStorage or set defaults on year change
   useEffect(() => {
     try {
-      const storedConfig = localStorage.getItem(`metas_config_${selectedYear}`);
-      const initialConfig = storedConfig ? JSON.parse(storedConfig) : { ...DEFAULT_CONFIG, ano: selectedYear };
-      setConfig(initialConfig);
+      const storedFunnel = localStorage.getItem(`funnel_config_${selectedYear}`);
+      const storedScenarios = localStorage.getItem(`scenario_settings_${selectedYear}`);
+      
+      setFunnelConfig(storedFunnel ? JSON.parse(storedFunnel) : { ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
+      setScenarioSettings(storedScenarios ? JSON.parse(storedScenarios) : DEFAULT_SCENARIO_SETTINGS);
+
     } catch (error) {
-      console.error("Failed to load config from localStorage:", error);
-      setConfig({ ...DEFAULT_CONFIG, ano: selectedYear });
+      console.error("Failed to load configs from localStorage:", error);
+      setFunnelConfig({ ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
+      setScenarioSettings(DEFAULT_SCENARIO_SETTINGS);
     }
   }, [selectedYear]);
 
-  // Recalculate projections whenever config changes
+  // Recalculate projections whenever configs change
   useEffect(() => {
-    const newProjections = calculateAllProjections(config);
+    const newProjections = calculateAllProjections(funnelConfig, scenarioSettings);
     setProjections(newProjections);
-  }, [config]);
+  }, [funnelConfig, scenarioSettings]);
 
-  const handleSaveConfig = useCallback((newConfig: FunnelConfig) => {
+  const handleSaveConfig = useCallback(() => {
     try {
-      localStorage.setItem(`metas_config_${newConfig.ano}`, JSON.stringify(newConfig));
-      // You could add a toast notification here for feedback
+      localStorage.setItem(`funnel_config_${funnelConfig.ano}`, JSON.stringify(funnelConfig));
+      localStorage.setItem(`scenario_settings_${funnelConfig.ano}`, JSON.stringify(scenarioSettings));
       console.log("Configuration saved!");
+      // You could add a toast notification here for feedback
     } catch (error) {
       console.error("Failed to save config to localStorage:", error);
     }
-  }, []);
+  }, [funnelConfig, scenarioSettings]);
+  
+  const handleScenarioSettingChange = (name: ScenarioType, field: 'churn' | 'adicao_mensal', value: number) => {
+    setScenarioSettings(prev => prev.map(s => s.name === name ? { ...s, [field]: value } : s));
+  };
+
 
   // Calculate Realized Data from CRM
   const realizedData = useMemo(() => {
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
-      mes: i + 1,
-      faturamento_real: 0,
-      vendas_real: 0,
-      leads_real: 0,
-      agendamentos_real: 0, // Placeholder for future logic if needed
-      reunioes_real: 0, // Placeholder
+      mes: i + 1, faturamento_real: 0, vendas_real: 0, leads_real: 0, reunioes_real: 0,
     }));
 
+    const reuniaoStatuses = ['reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho'];
+
     allCrmData.forEach(lead => {
-      if (lead.dataCriacao.getFullYear() === selectedYear) {
-        const monthIndex = lead.dataCriacao.getMonth();
-        monthlyData[monthIndex].leads_real++;
+      const leadYear = lead.dataCriacao.getFullYear();
+
+      // Leads
+      if (leadYear === selectedYear) {
+        monthlyData[lead.dataCriacao.getMonth()].leads_real++;
+      }
+      
+      const updateDate = lead.dataAtualizacao;
+      if (updateDate && updateDate.getFullYear() === selectedYear) {
+          if (reuniaoStatuses.includes(lead.status)) {
+             monthlyData[updateDate.getMonth()].reunioes_real++;
+          }
       }
 
-      if (lead.status === 'ganho' && lead.dataFechamento && lead.dataFechamento.getFullYear() === selectedYear) {
-        const monthIndex = lead.dataFechamento.getMonth();
-        monthlyData[monthIndex].vendas_real++;
-        monthlyData[monthIndex].faturamento_real += lead.valor;
+      // Vendas & Faturamento
+      const closeDate = lead.dataFechamento;
+      if (lead.status === 'ganho' && closeDate && closeDate.getFullYear() === selectedYear) {
+        monthlyData[closeDate.getMonth()].vendas_real++;
+        monthlyData[closeDate.getMonth()].faturamento_real += lead.valor;
       }
     });
     
-    // Active clients are a snapshot in time, not monthly, so we calculate it as a total
     const clientes_real_total = new Set(
-        allCrmData
-            .filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento.getFullYear() <= selectedYear)
-            .map(l => l.nome) // Simplistic assumption; a real system might use client IDs
+        allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento.getFullYear() <= selectedYear)
+                   .map(l => l.nome) 
     ).size;
 
 
@@ -97,34 +122,43 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
 
   return (
     <div className="space-y-6 animate-fade-in-down">
-      <div className="bg-card border border-border rounded-xl p-2">
-        <Tabs 
-            tabs={['🎯 Definir Metas', '📊 Acompanhar Realizado']} 
-            activeTab={activeTab === 'Definir Metas' ? '🎯 Definir Metas' : '📊 Acompanhar Realizado'}
-            onTabClick={(tab) => setActiveTab(tab.includes('Definir') ? 'Definir Metas' : 'Acompanhar Realizado')}
-        />
+      <div className="bg-card border border-border rounded-xl p-2 sticky top-2 z-20">
+        <Tabs tabs={TABS} activeTab={activeTab} onTabClick={setActiveTab} />
       </div>
 
-      {activeTab === 'Definir Metas' && projections && (
-        <DefineGoalsView 
-          config={config}
-          setConfig={setConfig}
-          onSave={handleSaveConfig}
-          projections={projections}
-          availableYears={availableYears}
-          onYearChange={setSelectedYear}
-        />
-      )}
-      
-      {activeTab === 'Acompanhar Realizado' && projections && (
-        <TrackPerformanceView 
-            config={config}
-            projections={projections}
-            realized={realizedData}
-            selectedYear={selectedYear}
-            availableYears={availableYears}
-            onYearChange={setSelectedYear}
-        />
+      {projections && (
+        <>
+          {activeTab === TABS[0] && (
+            <DefineGoalsView 
+              funnelConfig={funnelConfig}
+              setFunnelConfig={setFunnelConfig}
+              scenarioSettings={scenarioSettings}
+              onScenarioSettingChange={handleScenarioSettingChange}
+              onSave={handleSaveConfig}
+              projections={projections}
+              availableYears={availableYears}
+              onYearChange={setSelectedYear}
+            />
+          )}
+          
+          {activeTab === TABS[1] && (
+            <CurrentMonthView
+              funnelConfig={funnelConfig}
+              realizedData={realizedData.monthly}
+            />
+          )}
+
+          {activeTab === TABS[2] && (
+            <TrackYearView 
+                funnelConfig={funnelConfig}
+                projections={projections}
+                realized={realizedData}
+                selectedYear={selectedYear}
+                availableYears={availableYears}
+                onYearChange={setSelectedYear}
+            />
+          )}
+        </>
       )}
     </div>
   );

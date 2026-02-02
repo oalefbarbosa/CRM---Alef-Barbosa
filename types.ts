@@ -266,7 +266,7 @@ export interface DashboardGeralMetrics {
     velocity: FunnelVelocity;
 }
 
-// FIX: Add types for legacy/unused objective components to resolve import errors.
+// FIX: Add ObjectiveConfig and Scenario types for ObjectivesConfigurator component
 export type Scenario = 'conservador' | 'moderado' | 'agressivo';
 
 export interface ObjectiveConfig {
@@ -278,18 +278,6 @@ export interface ObjectiveConfig {
   adicao_mensal: number;
   leads_meta_base: number;
   conversao_meta: number;
-}
-
-export interface MergedData {
-    id: string;
-    ano: number;
-    mes: number;
-    leads_meta: number;
-    leads_real: number;
-    vendas_meta: number;
-    vendas_real: number;
-    faturamento_meta: number;
-    faturamento_real: number;
 }
 
 // --- OBJECTIVES V2 TYPES ---
@@ -308,6 +296,12 @@ export interface FunnelConfig {
   taxa_conversao: number;
 }
 
+export interface ScenarioSetting {
+  name: ScenarioType;
+  churn: number;
+  adicao_mensal: number;
+}
+
 export interface MonthlyScenarioData {
     mes: number; // 1-12
     faturamento_projetado: number;
@@ -318,4 +312,17 @@ export interface Projections {
     inicial: MonthlyScenarioData[];
     bom: MonthlyScenarioData[];
     otimo: MonthlyScenarioData[];
+}
+
+// FIX: Add MergedData type for ObjectivesTable and ObjectivesChart components
+export interface MergedData {
+  id: string;
+  ano: number;
+  mes: number;
+  leads_meta: number;
+  leads_real: number;
+  vendas_meta: number;
+  vendas_real: number;
+  faturamento_meta: number;
+  faturamento_real: number;
 }
