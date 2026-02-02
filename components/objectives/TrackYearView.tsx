@@ -17,7 +17,7 @@ const YearlyDetailTable: React.FC<{realized: any, meta: any, selectedYear: numbe
         <div className="overflow-x-auto custom-scrollbar"><table className="w-full text-sm">
             <thead className="text-left text-xs text-text-secondary uppercase"><tr>
                 <th className="p-2 whitespace-nowrap">Mês</th>
-                <th className="p-2 text-right whitespace-nowrap">Meta Faturamento</th>
+                <th className="p-2 text-right whitespace-nowrap">Fat. Projetado</th>
                 <th className="p-2 text-right whitespace-nowrap">Fat. Real</th>
                 <th className="p-2 text-right whitespace-nowrap">Diferença</th>
                 <th className="p-2 text-right whitespace-nowrap">Ajuste p/ Mês Seg.</th>
@@ -84,7 +84,8 @@ const TrackYearView: React.FC<TrackYearViewProps> = ({ funnelConfig, projections
 
     const aggregatedData = useMemo(() => {
         // --- GOALS ARE DERIVED FROM THE ANNUAL GOAL (NECESSARY FUNNEL) ---
-        const annualVendasGoal = funnelConfig.ticket_medio > 0 ? funnelConfig.faturamento_anual_meta / funnelConfig.ticket_medio : 0;
+        const valor_total_contrato = funnelConfig.ticket_medio * funnelConfig.duracao_contrato_meses;
+        const annualVendasGoal = valor_total_contrato > 0 ? funnelConfig.faturamento_anual_meta / valor_total_contrato : 0;
 
         const reunioesAnoNecessarias = funnelConfig.taxa_conversao > 0 ? annualVendasGoal / (funnelConfig.taxa_conversao / 100) : 0;
         const agendamentosAnoNecessarios = funnelConfig.taxa_comparecimento > 0 ? reunioesAnoNecessarias / (funnelConfig.taxa_comparecimento / 100) : 0;

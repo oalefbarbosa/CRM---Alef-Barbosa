@@ -5,6 +5,9 @@ export const formatCurrency = (value: number): string =>
 export const formatNumber = (value: number): string => 
   new Intl.NumberFormat('pt-BR').format(value || 0);
 
+export const formatDecimal = (value: number): string => 
+  new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value || 0);
+
 export const formatNumberAbbreviated = (value: number): string => {
   if (value >= 1_000_000) {
     return 'R$' + (value / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';

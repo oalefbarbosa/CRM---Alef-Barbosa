@@ -288,6 +288,7 @@ export interface FunnelConfig {
   ano: number;
   faturamento_anual_meta: number;
   ticket_medio: number;
+  duracao_contrato_meses: number;
   clientes_atuais: number;
   investimento_mensal: number;
   cpl: number;

@@ -42,7 +42,8 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
     // --- GOALS ARE DERIVED FROM THE ANNUAL GOAL (NECESSARY FUNNEL) ---
     const monthlyFaturamentoGoal = funnelConfig.faturamento_anual_meta / 12;
     
-    const vendasAnoNecessarias = funnelConfig.ticket_medio > 0 ? funnelConfig.faturamento_anual_meta / funnelConfig.ticket_medio : 0;
+    const valor_total_contrato = funnelConfig.ticket_medio * funnelConfig.duracao_contrato_meses;
+    const vendasAnoNecessarias = valor_total_contrato > 0 ? funnelConfig.faturamento_anual_meta / valor_total_contrato : 0;
     const monthlyVendasGoal = vendasAnoNecessarias / 12;
     
     const reunioesMesNecessarias = funnelConfig.taxa_conversao > 0 ? monthlyVendasGoal / (funnelConfig.taxa_conversao / 100) : 0;

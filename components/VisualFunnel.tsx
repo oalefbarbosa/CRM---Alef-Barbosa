@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FunnelStage, FunnelConversion } from '../types';
 import { formatNumber, formatPercent } from '../utils/formatters';
@@ -11,22 +10,24 @@ interface VisualFunnelProps {
 }
 
 const STAGE_NAME_MAP: { [key: string]: string } = {
-    'leads': 'Novos Leads', 
-    'em prospecção': 'Em Prospecção', 
-    'reunião de triagem': 'Triagem',
-    'reunião de proposta': 'Reunião de Proposta', 
+    'novo lead': 'Novos Leads', 
+    'tentativa de contato': 'Tentativa de Contato', 
+    'contato feito': 'Contato Feito',
+    'qualificado': 'Qualificado', 
+    'call agendada': 'Call Agendada', 
+    'call realizada': 'Call Realizada',
     'em follow up': 'Follow Up', 
-    'em negociação': 'Em Negociação', 
     'ganho': 'Vendas Fechadas'
 };
 
 const STAGE_COLORS: { [key: string]: string } = {
-    'leads': 'bg-slate-500',
-    'em prospecção': 'bg-blue-500',
-    'reunião de triagem': 'bg-indigo-500',
-    'reunião de proposta': 'bg-purple-500',
-    'em follow up': 'bg-orange-500',
-    'em negociação': 'bg-yellow-500',
+    'novo lead': 'bg-slate-500',
+    'tentativa de contato': 'bg-blue-500',
+    'contato feito': 'bg-amber-600',
+    'qualificado': 'bg-blue-600',
+    'call agendada': 'bg-orange-500',
+    'call realizada': 'bg-teal-500',
+    'em follow up': 'bg-purple-500',
     'ganho': 'bg-green-500'
 };
 
@@ -46,7 +47,7 @@ const VisualFunnel: React.FC<VisualFunnelProps> = ({ stages, conversions }) => {
         {stages.map((stage, index) => {
           const conversionToNext = conversions.find(c => c.from === stage.name);
           // Calculate width relative to maxCount, minimum 20% so text fits
-          const widthPercent = Math.max(20, (stage.count / maxCount) * 100);
+          const widthPercent = maxCount > 0 ? Math.max(20, (stage.count / maxCount) * 100) : 20;
           const colorClass = STAGE_COLORS[stage.name] || 'bg-slate-600';
           
           return (

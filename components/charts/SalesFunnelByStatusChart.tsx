@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from 'react';
 import { useChart } from './BaseChart';
 import { CrmData } from '../../types';
@@ -8,16 +7,18 @@ interface SalesFunnelByStatusChartProps {
   data: CrmData[];
 }
 
-const statusOrder = ['leads', 'em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho', 'perdido'];
+const statusOrder = ['novo lead', 'tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up', 'ganho', 'perdido'];
 
 const statusColors: { [key: string]: string } = {
-    'leads': '#3b82f6', // blue
-    'em prospecção': '#22d3d8', // cyan
-    'reunião de proposta': '#a855f7', // purple
-    'em follow up': '#f97316', // orange
-    'ganho': '#22c55e', // green
-    'perdido': '#ef4444', // red
-    'reunião de triagem': '#6366f1', // indigo
+    'novo lead': '#64748b', // slate
+    'tentativa de contato': '#3b82f6', // blue-500
+    'contato feito': '#d97706', // amber-600
+    'qualificado': '#2563eb', // blue-600
+    'call agendada': '#f97316', // orange-500
+    'call realizada': '#14b8a6', // teal-500
+    'em follow up': '#a855f7', // purple-500
+    'ganho': '#22c55e', // green-500
+    'perdido': '#ef4444', // red-500
 };
 
 const SalesFunnelByStatusChart: React.FC<SalesFunnelByStatusChartProps> = ({ data }) => {
@@ -44,7 +45,7 @@ const SalesFunnelByStatusChart: React.FC<SalesFunnelByStatusChartProps> = ({ dat
 
     const processData = useCallback((crmData: CrmData[]) => {
         const statusCounts = crmData.reduce((acc, lead) => {
-            const status = lead.status || 'leads';
+            const status = lead.status || 'novo lead';
             acc[status] = (acc[status] || 0) + 1;
             return acc;
         }, {} as { [key: string]: number });

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { FunnelConfig, Projections, ScenarioSetting, ScenarioType } from '../../types';
-import { formatCurrency, formatNumber, formatNumberAbbreviated } from '../../utils/formatters';
+import { formatCurrency, formatNumber, formatNumberAbbreviated, formatDecimal } from '../../utils/formatters';
 import ChartCard from '../ChartCard';
 import { Bar } from 'react-chartjs-2';
 import * as Icons from '../Icons';
@@ -76,7 +76,8 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
   };
   
   // --- FUNIL NECESSÁRIO (PARA BATER A META) ---
-  const vendasAnoNecessarias = funnelConfig.ticket_medio > 0 ? funnelConfig.faturamento_anual_meta / funnelConfig.ticket_medio : 0;
+  const valor_total_contrato = funnelConfig.ticket_medio * funnelConfig.duracao_contrato_meses;
+  const vendasAnoNecessarias = valor_total_contrato > 0 ? funnelConfig.faturamento_anual_meta / valor_total_contrato : 0;
   const vendasMesNecessarias = vendasAnoNecessarias / 12;
   const reunioesMesNecessarias = funnelConfig.taxa_conversao > 0 ? vendasMesNecessarias / (funnelConfig.taxa_conversao / 100) : 0;
   const agendamentosMesNecessarios = funnelConfig.taxa_comparecimento > 0 ? reunioesMesNecessarias / (funnelConfig.taxa_comparecimento / 100) : 0;
@@ -86,6 +87,11 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
   // Anual Necessário
   const leadsAnoNecessarios = leadsMesNecessarios * 12;
   const investimentoAnoNecessario = investimentoMesNecessario * 12;
+  
+  // Daily Metrics
+  const DIAS_UTEIS_MES = 21; // Average working days in a month
+  const vendasDiaNecessarias = vendasMesNecessarias / DIAS_UTEIS_MES;
+  const leadsDiaNecessarios = leadsMesNecessarios / DIAS_UTEIS_MES;
 
   // --- FUNIL ATUAL (PROJETADO PELO INVESTIMENTO) ---
   const leadsMesAtual = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
@@ -108,11 +114,21 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
   return (
     <div className="space-y-6">
       {/* SEÇÃO 1: RESUMO ANUAL (BASEADO NO NECESSÁRIO) */}
-      <div className="bg-card border border-border rounded-xl shadow-sm p-4">
+      <div className="bg-card border border-border rounded-xl shadow-sm p-4 space-y-4">
+          {/* Row 1: Annual */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <SummaryCard title="Meta Anual" value={formatCurrency(funnelConfig.faturamento_anual_meta)} />
               <SummaryCard title="Vendas/Ano (Necessário)" value={formatNumber(Math.round(vendasAnoNecessarias))} />
               <SummaryCard title="Leads/Ano (Necessário)" value={formatNumber(Math.round(leadsAnoNecessarios))} />
+          </div>
+          {/* Separator */}
+          <hr className="border-border/50" />
+          {/* Row 2: Monthly & Daily */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <SummaryCard title="Vendas/Mês (Necessário)" value={formatNumber(Math.round(vendasMesNecessarias))} />
+              <SummaryCard title="Leads/Mês (Necessário)" value={formatNumber(Math.round(leadsMesNecessarios))} />
+              <SummaryCard title="Vendas/Dia (Necessário)" value={formatDecimal(vendasDiaNecessarias)} />
+              <SummaryCard title="Leads/Dia (Necessário)" value={formatDecimal(leadsDiaNecessarios)} />
           </div>
       </div>
       
@@ -125,9 +141,10 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
             {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <InputField name="faturamento_anual_meta" label="Meta Faturamento" type="currency" value={funnelConfig.faturamento_anual_meta} onChange={handleInputChange} />
-            <InputField name="ticket_medio" label="Ticket Médio" type="currency" value={funnelConfig.ticket_medio} onChange={handleInputChange} />
+            <InputField name="ticket_medio" label="Ticket Médio (MRR)" type="currency" value={funnelConfig.ticket_medio} onChange={handleInputChange} />
+            <InputField name="duracao_contrato_meses" label="Duração Contrato (meses)" type="number" value={funnelConfig.duracao_contrato_meses} onChange={handleInputChange} />
             <InputField name="clientes_atuais" label="Clientes Atuais" type="number" value={funnelConfig.clientes_atuais} onChange={handleInputChange} />
             <InputField name="investimento_mensal" label="Investimento Mensal" type="currency" value={funnelConfig.investimento_mensal} onChange={handleInputChange} />
             <InputField name="cpl" label="CPL Esperado" type="currency" value={funnelConfig.cpl} onChange={handleInputChange} />

@@ -1,9 +1,8 @@
-
 import { CrmData, CampaignData, DashboardGeralMetrics, FunnelConversion, FunnelStage, Alert, CampaignPerformanceData, CampaignAnalysis, ResponsibleAnalysis, ForecastAnalysis, TimeFunnelAnalysis, ResponsibleData, FunnelVelocity } from '../types';
 
-const FUNNEL_STAGES_ORDER = [ 'leads', 'em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho' ];
-const ACTIVE_PIPELINE_STAGES = ['em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação'];
-const TIME_FUNNEL_STAGES_ORDER = ['em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação'];
+const FUNNEL_STAGES_ORDER = ['novo lead', 'tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up', 'ganho'];
+const ACTIVE_PIPELINE_STAGES = ['tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up'];
+const TIME_FUNNEL_STAGES_ORDER = ['tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up'];
 const WON_STATUSES = ['ganho', 'venda']; // Now accepts both 'ganho' and 'venda'
 
 const calculateChange = (current: number, previous: number): number => {
@@ -147,15 +146,15 @@ export const calculateDashboardGeralMetrics = (
         conversion: funnelConversions.find(c => c.to === stage)?.rate ?? 0,
     });
     
-    const totalLeadsKpi = { count: currentCrmData.length, value: currentCrmData.reduce((s, l) => s + l.valor, 0), conversionToNext: funnelConversions.find(c => c.from === 'leads')?.rate ?? 0 };
+    const totalLeadsKpi = { count: currentCrmData.length, value: currentCrmData.reduce((s, l) => s + l.valor, 0), conversionToNext: funnelConversions.find(c => c.from === 'novo lead')?.rate ?? 0 };
     
-    const notApproachedCount = allCrmData.filter(l => l.status === 'em prospecção' && l.prospeccao === 'Não abordado').length;
-    const lastAttemptCount = allCrmData.filter(l => l.status === 'em prospecção' && l.prospeccao === 'Última Tentativa').length;
+    const notApproachedCount = allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === 'Não abordado').length;
+    const lastAttemptCount = allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === 'Última Tentativa').length;
     const lastFupCount = allCrmData.filter(l => l.status === 'em follow up' && l.followUp === 'Último Fup').length;
     let alert: Alert | null = null;
     
     if(notApproachedCount > 0 || lastAttemptCount > 0 || lastFupCount > 0) {
-        const valueAtRisk = allCrmData.filter(l => (l.status === 'em prospecção' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)) || (l.status === 'em follow up' && l.followUp === 'Último Fup')).reduce((sum, l) => sum + l.valor, 0);
+        const valueAtRisk = allCrmData.filter(l => (l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)) || (l.status === 'em follow up' && l.followUp === 'Último Fup')).reduce((sum, l) => sum + l.valor, 0);
         alert = { type: 'critical', title: `AÇÃO URGENTE: ${notApproachedCount + lastAttemptCount + lastFupCount} leads em risco de perda!`, message: 'Ação imediata necessária para evitar a perda destas oportunidades.', details: [`Não abordados: ${notApproachedCount}`, `Última tentativa de contato: ${lastAttemptCount}`, `Último follow up: ${lastFupCount}`], valueAtRisk };
     } else {
         const bottleneck = funnelConversions.length > 0 ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null;
@@ -165,7 +164,7 @@ export const calculateDashboardGeralMetrics = (
         }
     }
     
-    const prospecting = { totalInStage: allCrmData.filter(l => l.status === 'em prospecção').length, distribution: ['Não abordado','Tentativa 1','Tentativa 2','Tentativa 3','Tentativa 4','Última Tentativa'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'em prospecção' && l.prospeccao === name).length, percentage: 0})), atRisk: { notApproached: notApproachedCount, lastAttempt: lastAttemptCount, total: notApproachedCount + lastAttemptCount, value: allCrmData.filter(l => l.status === 'em prospecção' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)).reduce((s,l)=>s+l.valor,0) }, successRate: [] };
+    const prospecting = { totalInStage: allCrmData.filter(l => l.status === 'tentativa de contato').length, distribution: ['Não abordado','Tentativa 1','Tentativa 2','Tentativa 3','Tentativa 4','Última Tentativa'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === name).length, percentage: 0})), atRisk: { notApproached: notApproachedCount, lastAttempt: lastAttemptCount, total: notApproachedCount + lastAttemptCount, value: allCrmData.filter(l => l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)).reduce((s,l)=>s+l.valor,0) }, successRate: [] };
     const followUp = { totalInStage: allCrmData.filter(l => l.status === 'em follow up').length, distribution: ['Proposta Enviada', 'Fup 1', 'Fup 2', 'Fup 3', 'Fup 4', 'Último Fup'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === name).length })), urgent: { lastFup: { count: lastFupCount, value: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === 'Último Fup').reduce((s, l) => s + l.valor, 0) }, stale7days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 7).length, stale14days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 14).length, }, closingPerformance: [], avgTimeInFollowUp: 0 };
     
     const avgTotalCycleTime = wonLeadsCurrent.length > 0 
@@ -179,7 +178,7 @@ export const calculateDashboardGeralMetrics = (
     const timeFunnel = calculateTimeFunnelAnalysis(avgTotalCycleTime);
     const velocity = calculateFunnelVelocity(wonLeadsCurrent, allCrmData, byResponsible);
 
-    return { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, closedSales, lostLeads: lostLeadsData, geralConversion, prospeccaoKpi: getStageKpi('em prospecção'), propostaKpi: getStageKpi('reunião de proposta'), followUpKpi: getStageKpi('em follow up'), negociacaoKpi: getStageKpi('em negociação'), alert, prospecting, followUp, campaigns: campaignAnalysis, byResponsible, forecast, timeFunnel, velocity, visualFunnel: { stages: FUNNEL_STAGES_ORDER.map(stage => ({ name: stage, count: stageProgressCounts[stage] || 0, value: stageValues[stage] || 0, subStages: stage === 'em prospecção' ? prospecting.distribution : (stage === 'em follow up' ? followUp.distribution : undefined) })), conversions: funnelConversions, bottleneck: alert?.type === 'bottleneck' ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null, opportunity: null } };
+    return { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, closedSales, lostLeads: lostLeadsData, geralConversion, prospeccaoKpi: getStageKpi('tentativa de contato'), propostaKpi: getStageKpi('call agendada'), followUpKpi: getStageKpi('em follow up'), negociacaoKpi: getStageKpi('em follow up'), alert, prospecting, followUp, campaigns: campaignAnalysis, byResponsible, forecast, timeFunnel, velocity, visualFunnel: { stages: FUNNEL_STAGES_ORDER.map(stage => ({ name: stage, count: stageProgressCounts[stage] || 0, value: stageValues[stage] || 0, subStages: stage === 'tentativa de contato' ? prospecting.distribution : (stage === 'em follow up' ? followUp.distribution : undefined) })), conversions: funnelConversions, bottleneck: alert?.type === 'bottleneck' ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null, opportunity: null } };
 };
 
 // --- Sub-calculators for new sections ---
@@ -208,13 +207,13 @@ const calculateResponsibleAnalysis = (crmData: CrmData[], globalAvgTime: number,
 }
 
 const calculateForecastAnalysis = (crmData: CrmData[], avgCycleTime: number): ForecastAnalysis => {
-    const activeLeads = crmData.filter(l => ['em negociação', 'em follow up'].includes(l.status));
+    const activeLeads = crmData.filter(l => ['em follow up', 'call realizada'].includes(l.status));
     const leads = activeLeads.map(lead => {
         const daysInPipe = diffInDays(new Date(), lead.dataCriacao);
         const cycleProgress = avgCycleTime > 0 ? (daysInPipe / avgCycleTime) : 0;
         let probability = 0;
-        if (lead.status === 'em negociação') probability = Math.min(cycleProgress * 100, 95);
-        else if (lead.status === 'em follow up') probability = Math.min(cycleProgress * 80, 85);
+        if (lead.status === 'em follow up') probability = Math.min(cycleProgress * 80, 85);
+        else if (lead.status === 'call realizada') probability = Math.min(cycleProgress * 100, 95);
 
         return { name: lead.nome, status: lead.status, value: lead.valor, probability, daysInStage: diffInDays(new Date(), lead.dataAtualizacao), responsible: lead.responsavel };
     }).sort((a,b) => b.probability - a.probability);
@@ -227,7 +226,7 @@ const calculateForecastAnalysis = (crmData: CrmData[], avgCycleTime: number): Fo
 
 const calculateTimeFunnelAnalysis = (avgCycleTime: number): TimeFunnelAnalysis => {
     if(avgCycleTime <= 0) return { stages: [], total: 0, bottleneck: null };
-    const stageDistribution = { 'em prospecção': 0.4, 'reunião de triagem': 0.1, 'reunião de proposta': 0.15, 'em follow up': 0.25, 'em negociação': 0.1 };
+    const stageDistribution = { 'tentativa de contato': 0.3, 'contato feito': 0.1, 'qualificado': 0.1, 'call agendada': 0.15, 'call realizada': 0.1, 'em follow up': 0.25 };
     const stages = TIME_FUNNEL_STAGES_ORDER.map(name => ({ name, days: avgCycleTime * stageDistribution[name as keyof typeof stageDistribution] }));
     const bottleneck = stages.length > 0 ? stages.reduce((max, s) => s.days > max.days ? s : max).name : null;
     return { stages, total: avgCycleTime, bottleneck };

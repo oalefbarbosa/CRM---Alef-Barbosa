@@ -11,14 +11,15 @@ import * as Icons from './Icons';
 
 // Default configuration values
 const DEFAULT_FUNNEL_CONFIG: Omit<FunnelConfig, 'ano'> = {
-  faturamento_anual_meta: 600000,
-  ticket_medio: 2500,
-  clientes_atuais: 10,
-  investimento_mensal: 2000,
+  faturamento_anual_meta: 400000,
+  ticket_medio: 1497,
+  duracao_contrato_meses: 12,
+  clientes_atuais: 5,
+  investimento_mensal: 1000,
   cpl: 30,
-  taxa_agendamento: 15,
-  taxa_comparecimento: 60,
-  taxa_conversao: 30,
+  taxa_agendamento: 50,
+  taxa_comparecimento: 50,
+  taxa_conversao: 50,
 };
 
 const DEFAULT_SCENARIO_SETTINGS: ScenarioSetting[] = [

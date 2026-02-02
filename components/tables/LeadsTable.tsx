@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { CrmData } from '../../types';
 import { formatCurrency, formatNumber, formatPercent, formatDateSimple } from '../../utils/formatters';
@@ -10,12 +9,15 @@ interface LeadsTableProps {
 }
 
 const statusColorMap: { [key: string]: string } = {
-  'ganho': 'bg-green-500/20 text-green-500',
-  'perdido': 'bg-red-500/20 text-red-500',
-  'em prospecção': 'bg-blue-500/20 text-blue-500',
-  'reunião de proposta': 'bg-purple-500/20 text-purple-500',
-  'em follow up': 'bg-orange-500/20 text-orange-500',
-  'leads': 'bg-slate-500/20 text-slate-500',
+  'novo lead': 'bg-slate-500/20 text-slate-400',
+  'tentativa de contato': 'bg-blue-500/20 text-blue-400',
+  'contato feito': 'bg-amber-600/20 text-amber-500',
+  'qualificado': 'bg-blue-600/20 text-blue-400',
+  'call agendada': 'bg-orange-500/20 text-orange-400',
+  'call realizada': 'bg-teal-500/20 text-teal-400',
+  'em follow up': 'bg-purple-500/20 text-purple-400',
+  'ganho': 'bg-green-500/20 text-green-400',
+  'perdido': 'bg-red-500/20 text-red-400',
 };
 
 const getTemperatureIcon = (temp: string) => {
