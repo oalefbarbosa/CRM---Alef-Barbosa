@@ -265,3 +265,57 @@ export interface DashboardGeralMetrics {
     visualFunnel: { stages: FunnelStage[]; conversions: FunnelConversion[]; bottleneck: FunnelConversion | null; opportunity: FunnelConversion | null; };
     velocity: FunnelVelocity;
 }
+
+// FIX: Add types for legacy/unused objective components to resolve import errors.
+export type Scenario = 'conservador' | 'moderado' | 'agressivo';
+
+export interface ObjectiveConfig {
+  ano: number;
+  cenario: Scenario;
+  ticket_medio: number;
+  clientes_atuais: number;
+  churn_meta: number;
+  adicao_mensal: number;
+  leads_meta_base: number;
+  conversao_meta: number;
+}
+
+export interface MergedData {
+    id: string;
+    ano: number;
+    mes: number;
+    leads_meta: number;
+    leads_real: number;
+    vendas_meta: number;
+    vendas_real: number;
+    faturamento_meta: number;
+    faturamento_real: number;
+}
+
+// --- OBJECTIVES V2 TYPES ---
+
+export type ScenarioType = 'inicial' | 'bom' | 'otimo';
+
+export interface FunnelConfig {
+  ano: number;
+  faturamento_anual_meta: number;
+  ticket_medio: number;
+  clientes_atuais: number;
+  investimento_mensal: number;
+  cpl: number;
+  taxa_agendamento: number; // As percentage, e.g., 15 for 15%
+  taxa_comparecimento: number;
+  taxa_conversao: number;
+}
+
+export interface MonthlyScenarioData {
+    mes: number; // 1-12
+    faturamento_projetado: number;
+    clientes_projetados: number;
+}
+
+export interface Projections {
+    inicial: MonthlyScenarioData[];
+    bom: MonthlyScenarioData[];
+    otimo: MonthlyScenarioData[];
+}
