@@ -15,12 +15,18 @@ interface CurrentMonthViewProps {
 
 const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, realizedData, projections }) => {
   const [selectedScenario, setSelectedScenario] = useState<ScenarioType>('bom');
-  const [displayedDate, setDisplayedDate] = useState(new Date());
+  
+  // Safely initialize date to the 15th of the current month in UTC to avoid timezone issues.
+  const [displayedDate, setDisplayedDate] = useState(() => {
+    const today = new Date();
+    return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 15));
+  });
 
   const changeMonth = (increment: number) => {
     setDisplayedDate(prevDate => {
-        const newDate = new Date(prevDate);
-        newDate.setUTCMonth(prevDate.getUTCMonth() + increment);
+        // Create a new date based on the previous one to avoid mutation issues.
+        // Always set the day to 15 to prevent invalid dates (e.g., Feb 30th).
+        const newDate = new Date(Date.UTC(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + increment, 15));
         return newDate;
     });
   };
@@ -31,9 +37,8 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
 
   const now = new Date();
   const isCurrentMonthView = displayedMonthIndex === now.getUTCMonth() && displayedYear === now.getUTCFullYear();
-
   const daysInMonth = new Date(Date.UTC(displayedYear, displayedMonthIndex + 1, 0)).getUTCDate();
-  const daysRemaining = daysInMonth - now.getUTCDate();
+  const daysRemaining = isCurrentMonthView ? daysInMonth - now.getUTCDate() : 0;
   
   const monthlyMetrics = useMemo(() => {
     const leadsMesMetaFunil = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
@@ -42,7 +47,7 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
     // Ensure we don't go out of bounds if projections are only for one year
     const projectionIndex = funnelConfig.ano === displayedYear ? displayedMonthIndex : -1;
     const metaFromScenario = projectionIndex !== -1 ? projections[selectedScenario][projectionIndex] : { faturamento_projetado: 0 };
-    const realized = funnelConfig.ano === displayedYear ? realizedData[displayedMonthIndex] : { leads_real: 0, vendas_real: 0, faturamento_real: 0 };
+    const realized = funnelConfig.ano === displayedYear && realizedData[displayedMonthIndex] ? realizedData[displayedMonthIndex] : { leads_real: 0, vendas_real: 0, faturamento_real: 0 };
 
     return {
         leads: { meta: leadsMesMetaFunil, real: realized.leads_real },
@@ -53,7 +58,7 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
   
   const paceData = useMemo(() => {
     if (!isCurrentMonthView) return null;
-    const totalWorkingDays = getWorkingDaysInMonth(displayedYear, displayedMonthIndex + 1);
+    const totalWorkingDays = getWorkingDaysInMonth(displayedYear, displayedMonthIndex);
     const passedWorkingDays = getPassedWorkingDays();
     const remainingWorkingDays = totalWorkingDays - passedWorkingDays;
     

@@ -44,17 +44,17 @@ export function calculateAllProjections(config: FunnelConfig, scenarioSettings: 
 
 
 /**
- * Calculates the number of working days in a given month and year.
+ * Calculates the number of working days in a given month and year (UTC).
  * @param year The full year (e.g., 2024).
- * @param month The month (1-12).
+ * @param month The month (0-11 for UTC).
  * @returns The total number of working days (Mon-Fri).
  */
 export function getWorkingDaysInMonth(year: number, month: number): number {
-  const daysInMonth = new Date(year, month, 0).getDate();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   let workingDays = 0;
   for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month - 1, day);
-    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+    const date = new Date(Date.UTC(year, month, day));
+    const dayOfWeek = date.getUTCDay(); // 0 = Sunday, 6 = Saturday
     if (dayOfWeek > 0 && dayOfWeek < 6) {
       workingDays++;
     }
@@ -63,18 +63,18 @@ export function getWorkingDaysInMonth(year: number, month: number): number {
 }
 
 /**
- * Calculates the number of working days that have passed in the current month.
+ * Calculates the number of working days that have passed in the current month (UTC).
  * @returns The number of past working days.
  */
 export function getPassedWorkingDays(): number {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const today = now.getDate();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth();
+    const today = now.getUTCDate();
     let passedDays = 0;
     for (let day = 1; day <= today; day++) {
-        const date = new Date(year, month, day);
-        const dayOfWeek = date.getDay();
+        const date = new Date(Date.UTC(year, month, day));
+        const dayOfWeek = date.getUTCDay();
         if (dayOfWeek > 0 && dayOfWeek < 6) {
             passedDays++;
         }

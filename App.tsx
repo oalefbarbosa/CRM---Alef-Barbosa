@@ -51,13 +51,10 @@ const App: React.FC = () => {
     const today = new Date();
     const year = today.getUTCFullYear();
     const month = today.getUTCMonth();
-    const day = today.getUTCDate();
     
-    // Default to "This Month": Start of the current month in UTC
+    // Default to "This Month"
     const startDate = new Date(Date.UTC(year, month, 1));
-    
-    // End of the current day in UTC
-    const endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+    const endDate = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
     
     return { startDate, endDate };
   });
@@ -113,20 +110,13 @@ const App: React.FC = () => {
   }, [crmData]);
 
 
-  const filteredCrmData = useMemo(() => {
+  // CRITICAL FIX: The main dateRange filter was incorrectly filtering by `dataCriacao`, 
+  // breaking all activity-based metrics (like sales). The date filter is now REMOVED from this
+  // main data filter. The `calculateDashboardGeralMetrics` function will handle date logic internally.
+  const filteredCrmDataByDropdowns = useMemo(() => {
     let data = crmData;
 
-    // Date filter
-    if (dateRange.startDate && dateRange.endDate) {
-        const inclusiveEndDate = new Date(dateRange.endDate);
-        inclusiveEndDate.setUTCHours(23, 59, 59, 999);
-        data = data.filter(lead => {
-            const leadDate = lead.dataCriacao;
-            return leadDate >= dateRange.startDate! && leadDate <= inclusiveEndDate;
-        });
-    }
-
-    // Text filters
+    // Secondary text filters (Tipo, Source, Status) are applied here.
     if (filters.tipoNegocio.length > 0) {
         data = data.filter(lead => filters.tipoNegocio.includes(lead.tipoNegocio));
     }
@@ -138,7 +128,20 @@ const App: React.FC = () => {
     }
 
     return data;
-  }, [crmData, dateRange, filters]);
+  }, [crmData, filters]);
+
+  // This data is used for cohort-based metrics (funnel, conversion rate)
+  const cohortCrmData = useMemo(() => {
+     if (!dateRange.startDate || !dateRange.endDate) return [];
+      const inclusiveEndDate = new Date(dateRange.endDate);
+      inclusiveEndDate.setUTCHours(23, 59, 59, 999);
+      
+      return filteredCrmDataByDropdowns.filter(lead => {
+          const leadDate = lead.dataCriacao;
+          return leadDate >= dateRange.startDate! && leadDate <= inclusiveEndDate;
+      });
+  }, [filteredCrmDataByDropdowns, dateRange]);
+
 
   const filteredCampaignData = useMemo(() => {
     if (!dateRange.startDate || !dateRange.endDate) return campaignData;
@@ -151,8 +154,8 @@ const App: React.FC = () => {
   }, [campaignData, dateRange]);
 
   const dashboardGeralMetrics: DashboardGeralMetrics | null = useMemo(() => 
-    loading ? null : calculateDashboardGeralMetrics(filteredCrmData, crmData, filteredCampaignData, campaignData, dateRange),
-  [filteredCrmData, crmData, filteredCampaignData, campaignData, dateRange, loading]);
+    loading ? null : calculateDashboardGeralMetrics(cohortCrmData, crmData, filteredCampaignData, campaignData, dateRange),
+  [cohortCrmData, crmData, filteredCampaignData, campaignData, dateRange, loading]);
   
   const hasActiveNonDateFilter = filters.tipoNegocio.length > 0 || filters.source.length > 0 || filters.status.length > 0;
 
@@ -221,7 +224,7 @@ const App: React.FC = () => {
                 {currentView === 'crm' && (
                    loading || !dashboardGeralMetrics 
                     ? <DashboardSkeletons /> 
-                    : <DashboardGeralView data={dashboardGeralMetrics} crmData={filteredCrmData} />
+                    : <DashboardGeralView data={dashboardGeralMetrics} crmData={cohortCrmData} />
                 )}
                 {currentView === 'objectives' && <ObjectivesView allCrmData={crmData} />}
                 {currentView === 'financial' && <FinancialView />}

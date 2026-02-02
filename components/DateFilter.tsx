@@ -37,46 +37,57 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChang
 
     const handlePreset = (preset: string) => {
         const now = new Date();
-        let end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
-        let start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const year = now.getUTCFullYear();
+        const month = now.getUTCMonth();
+        const day = now.getUTCDate();
+        let start: Date;
+        let end: Date;
 
         switch (preset) {
             case 'today':
-                // start and end are already set to today UTC
+                start = new Date(Date.UTC(year, month, day));
+                end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
                 break;
             case 'yesterday':
-                start.setUTCDate(start.getUTCDate() - 1);
-                end.setUTCDate(end.getUTCDate() - 1);
+                start = new Date(Date.UTC(year, month, day - 1));
+                end = new Date(Date.UTC(year, month, day - 1, 23, 59, 59, 999));
                 break;
             case 'this_week':
-                // Assuming week starts on Sunday.
-                const day = start.getUTCDay(); 
-                const diff = start.getUTCDate() - day; 
-                start.setUTCDate(diff);
+                const dayOfWeek = now.getUTCDay(); // Sunday = 0
+                start = new Date(Date.UTC(year, month, day - dayOfWeek));
+                end = new Date(Date.UTC(year, month, day + (6 - dayOfWeek), 23, 59, 59, 999));
                 break;
             case 'last_7_days':
-                start.setUTCDate(start.getUTCDate() - 6);
+                start = new Date(Date.UTC(year, month, day - 6));
+                end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
                 break;
             case 'this_month':
-                start.setUTCDate(1);
+                start = new Date(Date.UTC(year, month, 1));
+                end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
                 break;
             case 'last_month':
-                end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
-                start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+                start = new Date(Date.UTC(year, month - 1, 1));
+                end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
                 break;
             case 'last_90_days':
-                start.setUTCDate(start.getUTCDate() - 89);
+                start = new Date(Date.UTC(year, month, day - 89));
+                end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
                 break;
             case 'last_180_days':
-                start.setUTCDate(start.getUTCDate() - 179);
+                start = new Date(Date.UTC(year, month, day - 179));
+                end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
                 break;
             case 'this_year':
-                start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+                start = new Date(Date.UTC(year, 0, 1));
+                end = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
                 break;
             case 'last_year':
-                start = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
-                end = new Date(Date.UTC(now.getUTCFullYear() - 1, 11, 31, 23, 59, 59, 999));
+                start = new Date(Date.UTC(year - 1, 0, 1));
+                end = new Date(Date.UTC(year - 1, 11, 31, 23, 59, 59, 999));
                 break;
+            default:
+                start = new Date(Date.UTC(year, month, 1));
+                end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
         }
         setRange(start, end);
     };
