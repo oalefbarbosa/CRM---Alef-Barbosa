@@ -64,13 +64,13 @@ interface DefineGoalsViewProps {
   setFunnelConfig: (config: FunnelConfig) => void;
   scenarioSettings: ScenarioSetting[];
   onScenarioSettingChange: (name: ScenarioType, field: 'churn' | 'adicao_mensal', value: number) => void;
-  onSave: () => void;
   projections: Projections;
   availableYears: number[];
   onYearChange: (year: number) => void;
+  savingStatus: 'idle' | 'saving' | 'saved' | 'error';
 }
 
-const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunnelConfig, scenarioSettings, onScenarioSettingChange, onSave, projections, availableYears, onYearChange }) => {
+const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunnelConfig, scenarioSettings, onScenarioSettingChange, projections, availableYears, onYearChange, savingStatus }) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFunnelConfig({ ...funnelConfig, [e.target.name]: Number(e.target.value) || 0 });
@@ -134,9 +134,6 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
                 <div className="flex justify-between items-center"><span className="text-text-secondary">ROAS</span><span className={`font-sans font-bold text-base ${roas > 2.5 ? 'text-green-400' : 'text-yellow-400'}`}>{roas.toFixed(2)}x</span></div>
             </div>
         </div>
-         <div className="mt-6 flex justify-end">
-             <button onClick={onSave} className="px-6 py-2 text-sm font-bold text-white bg-brand-blue hover:bg-blue-600 rounded-lg transition-colors flex items-center gap-2"> <Icons.CheckCircle className="w-4 h-4"/> Salvar Configuração </button>
-         </div>
       </div>
       
       {/* SEÇÃO 3: CONFIGURADOR CENÁRIOS */}

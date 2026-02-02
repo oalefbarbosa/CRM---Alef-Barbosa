@@ -15,31 +15,45 @@ interface CurrentMonthViewProps {
 
 const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, realizedData, projections }) => {
   const [selectedScenario, setSelectedScenario] = useState<ScenarioType>('bom');
+  const [displayedDate, setDisplayedDate] = useState(new Date());
+
+  const changeMonth = (increment: number) => {
+    setDisplayedDate(prevDate => {
+        const newDate = new Date(prevDate);
+        newDate.setMonth(prevDate.getMonth() + increment);
+        return newDate;
+    });
+  };
+
+  const displayedMonthIndex = displayedDate.getMonth();
+  const displayedYear = displayedDate.getFullYear();
+  const displayedMonthName = displayedDate.toLocaleString('pt-BR', { month: 'long' });
 
   const now = new Date();
-  const currentMonthIndex = now.getMonth();
-  const currentMonthName = now.toLocaleString('pt-BR', { month: 'long' });
-  const currentYear = now.getFullYear();
-  const daysInMonth = new Date(currentYear, currentMonthIndex + 1, 0).getDate();
+  const isCurrentMonthView = displayedMonthIndex === now.getMonth() && displayedYear === now.getFullYear();
+
+  const daysInMonth = new Date(displayedYear, displayedMonthIndex + 1, 0).getDate();
   const daysRemaining = daysInMonth - now.getDate();
   
   const monthlyMetrics = useMemo(() => {
     const leadsMesMetaFunil = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
     const vendasMesMetaFunil = leadsMesMetaFunil * (funnelConfig.taxa_agendamento / 100) * (funnelConfig.taxa_comparecimento / 100) * (funnelConfig.taxa_conversao / 100);
     
-    const metaFromScenario = projections[selectedScenario][currentMonthIndex];
-
-    const realized = realizedData[currentMonthIndex];
+    // Ensure we don't go out of bounds if projections are only for one year
+    const projectionIndex = funnelConfig.ano === displayedYear ? displayedMonthIndex : -1;
+    const metaFromScenario = projectionIndex !== -1 ? projections[selectedScenario][projectionIndex] : { faturamento_projetado: 0 };
+    const realized = funnelConfig.ano === displayedYear ? realizedData[displayedMonthIndex] : { leads_real: 0, vendas_real: 0, faturamento_real: 0 };
 
     return {
         leads: { meta: leadsMesMetaFunil, real: realized.leads_real },
         vendas: { meta: vendasMesMetaFunil, real: realized.vendas_real },
         faturamento: { meta: metaFromScenario.faturamento_projetado, real: realized.faturamento_real }
     };
-  }, [funnelConfig, realizedData, currentMonthIndex, projections, selectedScenario]);
+  }, [funnelConfig, realizedData, displayedMonthIndex, displayedYear, projections, selectedScenario]);
   
   const paceData = useMemo(() => {
-    const totalWorkingDays = getWorkingDaysInMonth(currentYear, currentMonthIndex + 1);
+    if (!isCurrentMonthView) return null;
+    const totalWorkingDays = getWorkingDaysInMonth(displayedYear, displayedMonthIndex + 1);
     const passedWorkingDays = getPassedWorkingDays();
     const remainingWorkingDays = totalWorkingDays - passedWorkingDays;
     
@@ -49,13 +63,21 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
     };
     
     return { remainingWorkingDays, requiredPace };
-  }, [monthlyMetrics, currentYear, currentMonthIndex]);
+  }, [monthlyMetrics, displayedYear, displayedMonthIndex, isCurrentMonthView]);
 
   return (
     <div className="space-y-6">
         <div className="text-center">
-            <h2 className="text-3xl font-bold text-text-main capitalize">{currentMonthName} {currentYear}</h2>
-            <p className="text-text-secondary">Faltam {daysRemaining} dias para o fim do mês.</p>
+            <div className="flex items-center justify-center gap-4">
+                <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-bg-subtle transition-colors" aria-label="Mês anterior">
+                    <Icons.ChevronLeft className="h-6 w-6 text-text-secondary"/>
+                </button>
+                <h2 className="text-3xl font-bold text-text-main capitalize w-64">{displayedMonthName} {displayedYear}</h2>
+                 <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-bg-subtle transition-colors" aria-label="Próximo mês">
+                    <Icons.ChevronRight className="h-6 w-6 text-text-secondary"/>
+                </button>
+            </div>
+            {isCurrentMonthView && <p className="text-text-secondary">Faltam {daysRemaining} dias para o fim do mês.</p>}
         </div>
 
         <div className="flex flex-col sm:flex-row justify-center items-center bg-card border border-border p-3 rounded-xl shadow-sm gap-4">
@@ -77,21 +99,23 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
             <GoalProgressCard title="Leads Mês" realized={monthlyMetrics.leads.real} goal={monthlyMetrics.leads.meta} format="number" />
         </div>
 
-        <ChartCard title="📈 Ritmo Para Bater a Meta" loading={false}>
-            <div className="space-y-4 p-2 text-center">
-                <p className="text-sm text-text-secondary">Faltam <span className="font-bold text-text-main">{paceData.remainingWorkingDays}</span> dias úteis no mês.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-bg-subtle p-3 rounded-lg">
-                        <p className="text-xs text-text-secondary">Leads/dia necessários</p>
-                        <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.leads) ? paceData.requiredPace.leads.toFixed(1) : '🚨'}</p>
-                    </div>
-                     <div className="bg-bg-subtle p-3 rounded-lg">
-                        <p className="text-xs text-text-secondary">Vendas/dia necessárias</p>
-                        <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.vendas) ? paceData.requiredPace.vendas.toFixed(1) : '🚨'}</p>
+        {paceData && (
+            <ChartCard title="📈 Ritmo Para Bater a Meta" loading={false}>
+                <div className="space-y-4 p-2 text-center">
+                    <p className="text-sm text-text-secondary">Faltam <span className="font-bold text-text-main">{paceData.remainingWorkingDays}</span> dias úteis no mês.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-bg-subtle p-3 rounded-lg">
+                            <p className="text-xs text-text-secondary">Leads/dia necessários</p>
+                            <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.leads) ? paceData.requiredPace.leads.toFixed(1) : '🚨'}</p>
+                        </div>
+                         <div className="bg-bg-subtle p-3 rounded-lg">
+                            <p className="text-xs text-text-secondary">Vendas/dia necessárias</p>
+                            <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.vendas) ? paceData.requiredPace.vendas.toFixed(1) : '🚨'}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </ChartCard>
+            </ChartCard>
+        )}
     </div>
   );
 };

@@ -2,10 +2,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CrmData, FunnelConfig, Projections, ScenarioSetting, ScenarioType } from '../types';
 import { calculateAllProjections } from '../utils/objectiveCalculations';
+import { loadConfig, saveConfig, ConfigMap } from '../services/configService';
 import DefineGoalsView from './objectives/DefineGoalsView';
 import TrackYearView from './objectives/TrackYearView';
 import CurrentMonthView from './objectives/CurrentMonthView';
 import Tabs from './Tabs';
+import * as Icons from './Icons';
 
 // Default configuration values
 const DEFAULT_FUNNEL_CONFIG: Omit<FunnelConfig, 'ano'> = {
@@ -25,54 +27,97 @@ const DEFAULT_SCENARIO_SETTINGS: ScenarioSetting[] = [
     { name: 'otimo', churn: 12, adicao_mensal: 9 },
 ];
 
+type SavingStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => {
   const TABS = ['🎯 Definir Metas', '📅 Mês Atual', '📊 Acompanhar Ano'];
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   
+  // Local state for UI
   const [funnelConfig, setFunnelConfig] = useState<FunnelConfig>({ ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
   const [scenarioSettings, setScenarioSettings] = useState<ScenarioSetting[]>(DEFAULT_SCENARIO_SETTINGS);
   const [projections, setProjections] = useState<Projections | null>(null);
 
-  // Load config from localStorage or set defaults on year change
+  // State for data from Google Sheet
+  const [allConfigs, setAllConfigs] = useState<ConfigMap>(new Map());
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle');
+
+
+  // 1. Load all configs from Google Sheet on initial mount
   useEffect(() => {
-    try {
-      const storedFunnel = localStorage.getItem(`funnel_config_${selectedYear}`);
-      const storedScenarios = localStorage.getItem(`scenario_settings_${selectedYear}`);
-      
-      setFunnelConfig(storedFunnel ? JSON.parse(storedFunnel) : { ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
-      setScenarioSettings(storedScenarios ? JSON.parse(storedScenarios) : DEFAULT_SCENARIO_SETTINGS);
+    const fetchConfig = async () => {
+      setIsLoadingConfig(true);
+      try {
+        const configs = await loadConfig();
+        setAllConfigs(configs);
+      } catch (error) {
+        console.error("Failed to load configs from Google Sheet:", error);
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+    fetchConfig();
+  }, []);
 
-    } catch (error) {
-      console.error("Failed to load configs from localStorage:", error);
-      setFunnelConfig({ ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
-      setScenarioSettings(DEFAULT_SCENARIO_SETTINGS);
-    }
-  }, [selectedYear]);
+  // 2. Update local UI state when year changes or after configs are loaded
+  useEffect(() => {
+    if (isLoadingConfig) return; // Wait until configs are loaded
+    
+    const funnelKey = `funnel_config_${selectedYear}`;
+    const scenariosKey = `scenario_settings_${selectedYear}`;
 
-  // Recalculate projections whenever configs change
+    const storedFunnel = allConfigs.get(funnelKey) as FunnelConfig;
+    const storedScenarios = allConfigs.get(scenariosKey) as ScenarioSetting[];
+    
+    setFunnelConfig(storedFunnel || { ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
+    setScenarioSettings(storedScenarios || DEFAULT_SCENARIO_SETTINGS);
+
+  }, [selectedYear, allConfigs, isLoadingConfig]);
+
+  // 3. Recalculate projections whenever local configs change
   useEffect(() => {
     const newProjections = calculateAllProjections(funnelConfig, scenarioSettings);
     setProjections(newProjections);
   }, [funnelConfig, scenarioSettings]);
 
-  const handleSaveConfig = useCallback(() => {
-    try {
-      localStorage.setItem(`funnel_config_${funnelConfig.ano}`, JSON.stringify(funnelConfig));
-      localStorage.setItem(`scenario_settings_${funnelConfig.ano}`, JSON.stringify(scenarioSettings));
-      console.log("Configuration saved!");
-      // You could add a toast notification here for feedback
-    } catch (error) {
-      console.error("Failed to save config to localStorage:", error);
+  // 4. Auto-save configuration to Google Sheet with a debounce
+  useEffect(() => {
+    if (isLoadingConfig || !projections) { // Don't save on initial load or before calculations
+        return;
     }
-  }, [funnelConfig, scenarioSettings]);
+
+    const handler = setTimeout(async () => {
+        setSavingStatus('saving');
+        try {
+            const funnelKey = `funnel_config_${funnelConfig.ano}`;
+            const scenariosKey = `scenario_settings_${funnelConfig.ano}`;
+            
+            await Promise.all([
+                saveConfig(funnelKey, funnelConfig),
+                saveConfig(scenariosKey, scenarioSettings)
+            ]);
+            
+            setSavingStatus('saved');
+            setTimeout(() => setSavingStatus('idle'), 2000); // Reset after 2s
+        } catch (error) {
+            console.error("Failed to auto-save config to Google Sheet:", error);
+            setSavingStatus('error');
+        }
+    }, 1500); // Debounce for 1.5 seconds
+
+    return () => {
+        clearTimeout(handler); // Cleanup on component unmount or if config changes again
+    };
+  }, [funnelConfig, scenarioSettings, isLoadingConfig, projections]);
   
   const handleScenarioSettingChange = (name: ScenarioType, field: 'churn' | 'adicao_mensal', value: number) => {
     setScenarioSettings(prev => prev.map(s => s.name === name ? { ...s, [field]: value } : s));
   };
 
 
-  // Calculate Realized Data from CRM
+  // Calculate Realized Data from CRM (no change here)
   const realizedData = useMemo(() => {
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
       mes: i + 1, faturamento_real: 0, vendas_real: 0, leads_real: 0, reunioes_real: 0,
@@ -81,10 +126,7 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
     const reuniaoStatuses = ['reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho'];
 
     allCrmData.forEach(lead => {
-      // Use UTC methods to prevent timezone shifts from changing the date
       const leadYear = lead.dataCriacao.getUTCFullYear();
-      
-      // Leads created in the selected year
       if (leadYear === selectedYear) {
         monthlyData[lead.dataCriacao.getUTCMonth()].leads_real++;
       }
@@ -96,7 +138,6 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
           }
       }
 
-      // Vendas & Faturamento closed in the selected year
       const closeDate = lead.dataFechamento;
       if (lead.status === 'ganho' && closeDate && closeDate.getUTCFullYear() === selectedYear) {
         monthlyData[closeDate.getUTCMonth()].vendas_real++;
@@ -117,17 +158,38 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
       const years = new Set(allCrmData.map(d => d.dataCriacao.getFullYear()));
       const currentYear = new Date().getFullYear();
       years.add(currentYear);
-      years.add(currentYear + 1); // Allow planning for next year
+      years.add(currentYear + 1);
       return Array.from(years).sort((a,b) => Number(b) - Number(a));
   }, [allCrmData]);
 
+  const SavingIndicator = () => {
+    const statusMap = {
+        saving: { text: 'Salvando...', icon: <Icons.RefreshCw className="w-4 h-4 animate-spin"/>, color: 'text-text-secondary' },
+        saved: { text: 'Salvo na nuvem!', icon: <Icons.CheckCircle className="w-4 h-4"/>, color: 'text-brand-green' },
+        error: { text: 'Erro ao salvar!', icon: <Icons.AlertTriangle className="w-4 h-4"/>, color: 'text-brand-red' },
+        idle: { text: '', icon: null, color: ''}
+    }
+    const currentStatus = statusMap[savingStatus];
+    if (savingStatus === 'idle') return null;
+
+    return <p className={`text-xs italic flex items-center justify-end gap-2 transition-all ${currentStatus.color}`}>{currentStatus.icon} {currentStatus.text}</p>
+  }
+
   return (
     <div className="space-y-6 animate-fade-in-down">
-      <div className="bg-card border border-border rounded-xl p-2 sticky top-2 z-20">
+      <div className="bg-card border border-border rounded-xl p-2 sticky top-2 z-20 flex justify-between items-center">
         <Tabs tabs={TABS} activeTab={activeTab} onTabClick={setActiveTab} />
+        <div className="pr-4">
+            <SavingIndicator />
+        </div>
       </div>
 
-      {projections && (
+      {(isLoadingConfig || !projections) ? (
+          <div className="text-center p-12 text-text-secondary">
+              <Icons.RefreshCw className="h-8 w-8 mx-auto animate-spin mb-4" />
+              Carregando configurações...
+          </div>
+      ) : (
         <>
           {activeTab === TABS[0] && (
             <DefineGoalsView 
@@ -135,10 +197,10 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
               setFunnelConfig={setFunnelConfig}
               scenarioSettings={scenarioSettings}
               onScenarioSettingChange={handleScenarioSettingChange}
-              onSave={handleSaveConfig}
               projections={projections}
               availableYears={availableYears}
               onYearChange={setSelectedYear}
+              savingStatus={savingStatus}
             />
           )}
           

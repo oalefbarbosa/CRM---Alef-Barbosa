@@ -48,11 +48,17 @@ const App: React.FC = () => {
   };
   
   const [dateRange, setDateRange] = useState<{startDate: Date | null, endDate: Date | null}>(() => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 29);
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    const today = new Date();
+    const year = today.getUTCFullYear();
+    const month = today.getUTCMonth();
+    const day = today.getUTCDate();
+    
+    // Default to "This Month": Start of the current month in UTC
+    const startDate = new Date(Date.UTC(year, month, 1));
+    
+    // End of the current day in UTC
+    const endDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+    
     return { startDate, endDate };
   });
 
@@ -113,7 +119,7 @@ const App: React.FC = () => {
     // Date filter
     if (dateRange.startDate && dateRange.endDate) {
         const inclusiveEndDate = new Date(dateRange.endDate);
-        inclusiveEndDate.setHours(23, 59, 59, 999);
+        inclusiveEndDate.setUTCHours(23, 59, 59, 999);
         data = data.filter(lead => {
             const leadDate = lead.dataCriacao;
             return leadDate >= dateRange.startDate! && leadDate <= inclusiveEndDate;
@@ -137,7 +143,7 @@ const App: React.FC = () => {
   const filteredCampaignData = useMemo(() => {
     if (!dateRange.startDate || !dateRange.endDate) return campaignData;
     const inclusiveEndDate = new Date(dateRange.endDate);
-    inclusiveEndDate.setHours(23, 59, 59, 999);
+    inclusiveEndDate.setUTCHours(23, 59, 59, 999);
     return campaignData.filter(campaign => {
         const campaignDate = campaign.dataInicio;
         return campaignDate >= dateRange.startDate! && campaignDate <= inclusiveEndDate;

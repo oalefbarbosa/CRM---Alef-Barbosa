@@ -51,8 +51,8 @@ export const formatDateForPickerButton = (dateString: string): string => {
 };
 
 /**
- * Converts a Date object to a 'YYYY-MM-DD' string in the local timezone.
- * Avoids timezone issues that occur with date.toISOString().
+ * Converts a Date object to a 'YYYY-MM-DD' string based on its UTC values.
+ * Avoids timezone issues that occur with date.toISOString() or local getters.
  * @param date The date to format.
  * @returns The formatted date string or an empty string if the date is invalid.
  */
@@ -60,8 +60,9 @@ export const toYYYYMMDD = (date: Date): string => {
   if (!date || isNaN(date.getTime())) {
     return '';
   }
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
+  // Use UTC methods to ensure the date displayed matches the UTC date value, avoiding timezone shifts.
+  const year = date.getUTCFullYear();
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = date.getUTCDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 };

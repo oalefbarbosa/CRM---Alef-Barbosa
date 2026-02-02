@@ -12,11 +12,23 @@ interface DateFilterProps {
 const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChange }) => {
     
     const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onDateChange({ startDate: e.target.value ? new Date(e.target.value + 'T00:00:00') : null, endDate });
+        const dateStr = e.target.value;
+        if (!dateStr) {
+            onDateChange({ startDate: null, endDate });
+            return;
+        }
+        const [year, month, day] = dateStr.split('-').map(Number);
+        onDateChange({ startDate: new Date(Date.UTC(year, month - 1, day)), endDate });
     };
 
     const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onDateChange({ startDate, endDate: e.target.value ? new Date(e.target.value + 'T00:00:00') : null });
+        const dateStr = e.target.value;
+        if (!dateStr) {
+            onDateChange({ startDate, endDate: null });
+            return;
+        }
+        const [year, month, day] = dateStr.split('-').map(Number);
+        onDateChange({ startDate, endDate: new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)) });
     };
 
     const setRange = (start: Date, end: Date) => {
@@ -25,55 +37,45 @@ const DateFilter: React.FC<DateFilterProps> = ({ startDate, endDate, onDateChang
 
     const handlePreset = (preset: string) => {
         const now = new Date();
-        let start = new Date(now);
-        let end = new Date(now);
-        
-        // Ensure end of day for the end date (default to today end)
-        end.setHours(23, 59, 59, 999);
-        // Ensure start of day for default start date (default to today start)
-        start.setHours(0, 0, 0, 0);
+        let end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+        let start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
         switch (preset) {
             case 'today':
-                // Start is already today 00:00
+                // start and end are already set to today UTC
                 break;
             case 'yesterday':
-                start.setDate(now.getDate() - 1);
-                end.setDate(now.getDate() - 1);
-                end.setHours(23, 59, 59, 999);
+                start.setUTCDate(start.getUTCDate() - 1);
+                end.setUTCDate(end.getUTCDate() - 1);
                 break;
             case 'this_week':
                 // Assuming week starts on Sunday.
-                const day = now.getDay(); 
-                const diff = now.getDate() - day; 
-                start.setDate(diff);
+                const day = start.getUTCDay(); 
+                const diff = start.getUTCDate() - day; 
+                start.setUTCDate(diff);
                 break;
             case 'last_7_days':
-                start.setDate(now.getDate() - 6);
+                start.setUTCDate(start.getUTCDate() - 6);
                 break;
             case 'this_month':
-                start.setDate(1);
+                start.setUTCDate(1);
                 break;
             case 'last_month':
-                 // First day of previous month
-                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                // Last day of previous month
-                end = new Date(now.getFullYear(), now.getMonth(), 0);
-                end.setHours(23, 59, 59, 999);
+                end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
+                start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
                 break;
             case 'last_90_days':
-                start.setDate(now.getDate() - 89);
+                start.setUTCDate(start.getUTCDate() - 89);
                 break;
             case 'last_180_days':
-                start.setDate(now.getDate() - 179);
+                start.setUTCDate(start.getUTCDate() - 179);
                 break;
             case 'this_year':
-                start.setMonth(0, 1); // Jan 1st
+                start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
                 break;
             case 'last_year':
-                start = new Date(now.getFullYear() - 1, 0, 1);
-                end = new Date(now.getFullYear() - 1, 11, 31);
-                end.setHours(23, 59, 59, 999);
+                start = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
+                end = new Date(Date.UTC(now.getUTCFullYear() - 1, 11, 31, 23, 59, 59, 999));
                 break;
         }
         setRange(start, end);
