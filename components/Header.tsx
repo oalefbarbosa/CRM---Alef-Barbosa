@@ -20,6 +20,7 @@ interface HeaderProps {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenSidebar: () => void;
+  currentView: string;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -35,8 +36,21 @@ const Header: React.FC<HeaderProps> = ({
   filterOptions,
   theme,
   onToggleTheme,
-  onOpenSidebar
+  onOpenSidebar,
+  currentView
 }) => {
+
+  const viewTitles: { [key: string]: { title: string, subtitle: string } } = {
+    crm: { title: 'Dashboard CRM', subtitle: 'Performance & Controle' },
+    objectives: { title: 'Dashboard Objetivos', subtitle: 'Planejamento & Metas' },
+    financial: { title: 'Dashboard Financeiro', subtitle: 'Entradas & Saídas' },
+    operation: { title: 'Dashboard Operação', subtitle: 'Processos & Equipe' },
+    history: { title: 'Dashboard Histórico', subtitle: 'Análise Temporal' }
+  };
+
+  const { title, subtitle } = viewTitles[currentView] || { title: 'Dashboard', subtitle: 'Visão Geral' };
+
+
   return (
     <header className="mb-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -52,8 +66,8 @@ const Header: React.FC<HeaderProps> = ({
 
                 {/* Page Title (Since logo is in sidebar now) */}
                 <div className="block">
-                     <h2 className="text-xl sm:text-2xl font-bold text-text-main leading-tight">Dashboard CRM</h2>
-                     <p className="text-xs text-text-secondary">Performance & Controle</p>
+                     <h2 className="text-xl sm:text-2xl font-bold text-text-main leading-tight">{title}</h2>
+                     <p className="text-xs text-text-secondary">{subtitle}</p>
                 </div>
             </div>
             
@@ -82,34 +96,36 @@ const Header: React.FC<HeaderProps> = ({
             </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-            <div className="w-full sm:w-auto">
-                <FilterMenu 
-                    startDate={startDate}
-                    endDate={endDate}
-                    onDateChange={onDateChange}
-                    hasActiveFilter={hasActiveFilter}
+        {currentView === 'crm' && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                <div className="w-full sm:w-auto">
+                    <FilterMenu 
+                        startDate={startDate}
+                        endDate={endDate}
+                        onDateChange={onDateChange}
+                        hasActiveFilter={hasActiveFilter}
+                    />
+                </div>
+                <MultiSelectFilter 
+                  label="Tipo de Negócio"
+                  options={filterOptions.tipoNegocio}
+                  selected={filters.tipoNegocio}
+                  onChange={(selected) => onFilterChange('tipoNegocio', selected)}
+                />
+                 <MultiSelectFilter 
+                  label="Source"
+                  options={filterOptions.source}
+                  selected={filters.source}
+                  onChange={(selected) => onFilterChange('source', selected)}
+                />
+                 <MultiSelectFilter 
+                  label="Status"
+                  options={filterOptions.status}
+                  selected={filters.status}
+                  onChange={(selected) => onFilterChange('status', selected)}
                 />
             </div>
-            <MultiSelectFilter 
-              label="Tipo de Negócio"
-              options={filterOptions.tipoNegocio}
-              selected={filters.tipoNegocio}
-              onChange={(selected) => onFilterChange('tipoNegocio', selected)}
-            />
-             <MultiSelectFilter 
-              label="Source"
-              options={filterOptions.source}
-              selected={filters.source}
-              onChange={(selected) => onFilterChange('source', selected)}
-            />
-             <MultiSelectFilter 
-              label="Status"
-              options={filterOptions.status}
-              selected={filters.status}
-              onChange={(selected) => onFilterChange('status', selected)}
-            />
-        </div>
+        )}
     </header>
   );
 };

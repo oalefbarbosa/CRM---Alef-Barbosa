@@ -8,6 +8,32 @@ import * as Icons from '../Icons';
 
 // --- SUB-COMPONENTS ---
 
+interface InputFieldProps {
+  name: keyof FunnelConfig;
+  label: string;
+  type: 'currency' | 'number' | 'percent';
+  value: number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const InputField: React.FC<InputFieldProps> = ({ name, label, type, value, onChange }) => (
+    <div>
+        <label className="block text-xs font-medium text-text-secondary mb-1">{label}</label>
+        <div className="relative">
+            {type === 'currency' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">R$</span>}
+            <input
+                type="number"
+                name={name}
+                value={value}
+                onChange={onChange}
+                className={`w-full bg-background border border-border rounded-lg py-2 text-text-main focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono ${type === 'currency' ? 'pl-8 pr-3' : type === 'percent' ? 'pr-9 pl-3' : 'px-3'}`}
+            />
+            {type === 'percent' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">%</span>}
+        </div>
+    </div>
+);
+
+
 const SummaryCard: React.FC<{ title: string, value: string }> = ({ title, value }) => (
     <div className="bg-bg-subtle border border-border/50 rounded-lg p-3 text-center">
         <p className="text-xs text-text-secondary uppercase font-bold">{title}</p>
@@ -47,6 +73,7 @@ interface DefineGoalsViewProps {
 const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunnelConfig, scenarioSettings, onScenarioSettingChange, onSave, projections, availableYears, onYearChange }) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Using a functional update might be slightly better if updates are batched, but direct set is fine here.
     setFunnelConfig({ ...funnelConfig, [e.target.name]: Number(e.target.value) || 0 });
   };
   
@@ -60,10 +87,6 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
   
   const totalClientesProjetado = funnelConfig.clientes_atuais + (vendasMes * 12);
   const totalLeadsAno = leadsMes * 12;
-  
-  const InputField: React.FC<{ name: keyof FunnelConfig, label: string, type: 'currency' | 'number' | 'percent' }> = ({ name, label, type }) => (
-    <div> <label className="block text-xs font-medium text-text-secondary mb-1">{label}</label> <div className="relative"> {type === 'currency' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">R$</span>} <input type="number" name={name} value={funnelConfig[name]} onChange={handleInputChange} className={`w-full bg-background border border-border rounded-lg py-2 text-text-main focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono ${type === 'currency' ? 'pl-8 pr-3' : type === 'percent' ? 'pr-9 pl-3' : 'px-3'}`} /> {type === 'percent' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">%</span>} </div> </div>
-  );
 
   const scenarioBorders: Record<ScenarioType, string> = { inicial: 'border-slate-500', bom: 'border-blue-500', otimo: 'border-green-500' };
 
@@ -90,14 +113,14 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
             {/* Coluna Esquerda: Inputs */}
             <div className="grid grid-cols-2 gap-4">
-                <InputField name="faturamento_anual_meta" label="Meta Faturamento" type="currency" />
-                <InputField name="ticket_medio" label="Ticket Médio" type="currency" />
-                <InputField name="clientes_atuais" label="Clientes Atuais" type="number" />
-                <InputField name="investimento_mensal" label="Investimento Mensal" type="currency" />
-                <InputField name="cpl" label="CPL Esperado" type="currency" />
-                <InputField name="taxa_agendamento" label="Taxa Agendamento" type="percent" />
-                <InputField name="taxa_comparecimento" label="Taxa Comparec." type="percent" />
-                <InputField name="taxa_conversao" label="Taxa Conversão" type="percent" />
+                <InputField name="faturamento_anual_meta" label="Meta Faturamento" type="currency" value={funnelConfig.faturamento_anual_meta} onChange={handleInputChange} />
+                <InputField name="ticket_medio" label="Ticket Médio" type="currency" value={funnelConfig.ticket_medio} onChange={handleInputChange} />
+                <InputField name="clientes_atuais" label="Clientes Atuais" type="number" value={funnelConfig.clientes_atuais} onChange={handleInputChange} />
+                <InputField name="investimento_mensal" label="Investimento Mensal" type="currency" value={funnelConfig.investimento_mensal} onChange={handleInputChange} />
+                <InputField name="cpl" label="CPL Esperado" type="currency" value={funnelConfig.cpl} onChange={handleInputChange} />
+                <InputField name="taxa_agendamento" label="Taxa Agendamento" type="percent" value={funnelConfig.taxa_agendamento} onChange={handleInputChange} />
+                <InputField name="taxa_comparecimento" label="Taxa Comparec." type="percent" value={funnelConfig.taxa_comparecimento} onChange={handleInputChange} />
+                <InputField name="taxa_conversao" label="Taxa Conversão" type="percent" value={funnelConfig.taxa_conversao} onChange={handleInputChange} />
             </div>
             {/* Coluna Direita: Calculados */}
             <div className="bg-bg-subtle border border-border rounded-lg p-4 space-y-2 text-sm h-full">

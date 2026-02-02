@@ -175,6 +175,7 @@ const App: React.FC = () => {
         <div className="max-w-screen-2xl mx-auto">
           {/* Header serves as the top toolbar now */}
           <Header 
+            currentView={currentView}
             lastUpdated={lastUpdated} 
             onRefresh={fetchData} 
             loading={loading}
