@@ -81,30 +81,31 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
     const reuniaoStatuses = ['reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho'];
 
     allCrmData.forEach(lead => {
-      const leadYear = lead.dataCriacao.getFullYear();
-
-      // Leads
+      // Use UTC methods to prevent timezone shifts from changing the date
+      const leadYear = lead.dataCriacao.getUTCFullYear();
+      
+      // Leads created in the selected year
       if (leadYear === selectedYear) {
-        monthlyData[lead.dataCriacao.getMonth()].leads_real++;
+        monthlyData[lead.dataCriacao.getUTCMonth()].leads_real++;
       }
       
       const updateDate = lead.dataAtualizacao;
-      if (updateDate && updateDate.getFullYear() === selectedYear) {
+      if (updateDate && updateDate.getUTCFullYear() === selectedYear) {
           if (reuniaoStatuses.includes(lead.status)) {
-             monthlyData[updateDate.getMonth()].reunioes_real++;
+             monthlyData[updateDate.getUTCMonth()].reunioes_real++;
           }
       }
 
-      // Vendas & Faturamento
+      // Vendas & Faturamento closed in the selected year
       const closeDate = lead.dataFechamento;
-      if (lead.status === 'ganho' && closeDate && closeDate.getFullYear() === selectedYear) {
-        monthlyData[closeDate.getMonth()].vendas_real++;
-        monthlyData[closeDate.getMonth()].faturamento_real += lead.valor;
+      if (lead.status === 'ganho' && closeDate && closeDate.getUTCFullYear() === selectedYear) {
+        monthlyData[closeDate.getUTCMonth()].vendas_real++;
+        monthlyData[closeDate.getUTCMonth()].faturamento_real += lead.valor;
       }
     });
     
     const clientes_real_total = new Set(
-        allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento.getFullYear() <= selectedYear)
+        allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento.getUTCFullYear() <= selectedYear)
                    .map(l => l.nome) 
     ).size;
 
@@ -145,6 +146,7 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
             <CurrentMonthView
               funnelConfig={funnelConfig}
               realizedData={realizedData.monthly}
+              projections={projections}
             />
           )}
 

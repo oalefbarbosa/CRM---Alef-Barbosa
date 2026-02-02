@@ -5,6 +5,16 @@ export const formatCurrency = (value: number): string =>
 export const formatNumber = (value: number): string => 
   new Intl.NumberFormat('pt-BR').format(value || 0);
 
+export const formatNumberAbbreviated = (value: number): string => {
+  if (value >= 1_000_000) {
+    return 'R$' + (value / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  }
+  if (value >= 1_000) {
+    return 'R$' + (value / 1_000).toFixed(1).replace(/\.0$/, '') + 'k';
+  }
+  return 'R$' + value.toString();
+};
+
 export const formatPercent = (value: number): string => {
     if (isNaN(value) || !isFinite(value)) {
         return '0.00%';
@@ -27,7 +37,7 @@ export const formatDateSimple = (date: Date | null): string => {
   if (!date || isNaN(date.getTime())) {
     return 'N/A';
   }
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(date);
 };
 
 export const formatDateForPickerButton = (dateString: string): string => {

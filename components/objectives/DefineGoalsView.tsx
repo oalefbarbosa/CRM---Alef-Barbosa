@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { FunnelConfig, Projections, ScenarioSetting, ScenarioType } from '../../types';
-import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { formatCurrency, formatNumber, formatNumberAbbreviated } from '../../utils/formatters';
 import ChartCard from '../ChartCard';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import * as Icons from '../Icons';
 
 // --- SUB-COMPONENTS ---
@@ -26,7 +26,7 @@ const InputField: React.FC<InputFieldProps> = ({ name, label, type, value, onCha
                 name={name}
                 value={value}
                 onChange={onChange}
-                className={`w-full bg-background border border-border rounded-lg py-2 text-text-main focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono ${type === 'currency' ? 'pl-8 pr-3' : type === 'percent' ? 'pr-9 pl-3' : 'px-3'}`}
+                className={`w-full bg-background border border-border rounded-lg py-2 text-text-main focus:outline-none focus:ring-2 focus:ring-brand-blue font-sans ${type === 'currency' ? 'pl-8 pr-3' : type === 'percent' ? 'pr-9 pl-3' : 'px-3'}`}
             />
             {type === 'percent' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">%</span>}
         </div>
@@ -43,9 +43,9 @@ const SummaryCard: React.FC<{ title: string, value: string }> = ({ title, value 
 
 const FaturamentoProjectionChart: React.FC<{ projections: Projections }> = ({ projections }) => {
     const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' as const, align: 'end' as const, labels: { color: 'var(--color-text-secondary)', boxWidth: 10 } } }, scales: { y: { ticks: { color: 'var(--color-text-secondary)', callback: (v: any) => formatCurrency(v) }, grid: { color: 'var(--color-border)' } }, x: { ticks: { color: 'var(--color-text-secondary)' }, grid: { display: false } } } };
-    const chartData = { labels, datasets: [ { label: 'Inicial', data: projections.inicial.map(p => p.faturamento_projetado), borderColor: '#6b7280', borderDash: [5, 5], tension: 0.3, pointRadius: 0, }, { label: 'Bom', data: projections.bom.map(p => p.faturamento_projetado), borderColor: '#3b82f6', borderDash: [10, 5], tension: 0.3, pointRadius: 0, }, { label: 'Ótimo', data: projections.otimo.map(p => p.faturamento_projetado), borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)', fill: true, tension: 0.3, pointRadius: 0, } ] };
-    return <Line data={chartData} options={chartOptions} />;
+    const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' as const, align: 'end' as const, labels: { color: 'var(--color-text-secondary)', boxWidth: 10 } } }, scales: { y: { ticks: { color: 'var(--color-text-secondary)', callback: (v: any) => formatNumberAbbreviated(v) }, grid: { color: 'var(--color-border)' } }, x: { ticks: { color: 'var(--color-text-secondary)' }, grid: { display: false } } } };
+    const chartData = { labels, datasets: [ { label: 'Inicial', data: projections.inicial.map(p => p.faturamento_projetado), backgroundColor: '#6b7280', }, { label: 'Bom', data: projections.bom.map(p => p.faturamento_projetado), backgroundColor: '#3b82f6', }, { label: 'Ótimo', data: projections.otimo.map(p => p.faturamento_projetado), backgroundColor: '#22c55e', } ] };
+    return <Bar data={chartData} options={chartOptions} />;
 };
 
 const VisualFunnelProjection: React.FC<{ config: FunnelConfig }> = ({ config }) => {
@@ -73,7 +73,6 @@ interface DefineGoalsViewProps {
 const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunnelConfig, scenarioSettings, onScenarioSettingChange, onSave, projections, availableYears, onYearChange }) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Using a functional update might be slightly better if updates are batched, but direct set is fine here.
     setFunnelConfig({ ...funnelConfig, [e.target.name]: Number(e.target.value) || 0 });
   };
   
@@ -89,6 +88,7 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
   const totalLeadsAno = leadsMes * 12;
 
   const scenarioBorders: Record<ScenarioType, string> = { inicial: 'border-slate-500', bom: 'border-blue-500', otimo: 'border-green-500' };
+  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
   return (
     <div className="space-y-6">
@@ -123,15 +123,15 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
                 <InputField name="taxa_conversao" label="Taxa Conversão" type="percent" value={funnelConfig.taxa_conversao} onChange={handleInputChange} />
             </div>
             {/* Coluna Direita: Calculados */}
-            <div className="bg-bg-subtle border border-border rounded-lg p-4 space-y-2 text-sm h-full">
+            <div className="bg-bg-subtle border border-border rounded-lg p-4 space-y-3 h-full">
                 <h4 className="font-bold text-base text-text-main mb-3">Funil Calculado</h4>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Leads/mês</span><span className="font-mono font-bold text-text-main">{formatNumber(leadsMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Agendamentos/mês</span><span className="font-mono font-bold text-text-main">{formatNumber(agendamentosMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Reuniões/mês</span><span className="font-mono font-bold text-text-main">{formatNumber(reunioesMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Vendas/mês</span><span className="font-mono font-bold text-text-main">{formatNumber(vendasMes)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">Leads/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(leadsMes)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">Agendamentos/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(agendamentosMes)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">Reuniões/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(reunioesMes)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">Vendas/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(vendasMes)}</span></div>
                 <hr className="border-border/50 my-2" />
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Valor Vendido/mês</span><span className="font-mono font-bold text-green-400">{formatCurrency(valorVendidoMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">ROAS</span><span className={`font-mono font-bold ${roas > 2.5 ? 'text-green-400' : 'text-yellow-400'}`}>{roas.toFixed(2)}x</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">Valor Vendido/mês</span><span className="font-sans font-bold text-green-400 text-base">{formatCurrency(valorVendidoMes)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-text-secondary">ROAS</span><span className={`font-sans font-bold text-base ${roas > 2.5 ? 'text-green-400' : 'text-yellow-400'}`}>{roas.toFixed(2)}x</span></div>
             </div>
         </div>
          <div className="mt-6 flex justify-end">
@@ -149,8 +149,8 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
                   return (
                     <div key={setting.name} className={`bg-bg-subtle border-t-4 ${scenarioBorders[setting.name]} rounded-lg p-4 space-y-3`}>
                         <h4 className="font-bold text-text-main capitalize">{setting.name}</h4>
-                        <div> <label className="block text-xs font-medium text-text-secondary mb-1">Churn Mensal</label> <div className="relative"> <input type="number" value={setting.churn} onChange={(e) => onScenarioSettingChange(setting.name, 'churn', Number(e.target.value))} className="w-full bg-background border border-border rounded-lg p-2 pr-8 text-text-main font-mono" /> <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">%</span> </div> </div>
-                        <div> <label className="block text-xs font-medium text-text-secondary mb-1">Adição Mensal (Clientes)</label> <input type="number" value={setting.adicao_mensal} onChange={(e) => onScenarioSettingChange(setting.name, 'adicao_mensal', Number(e.target.value))} className="w-full bg-background border border-border rounded-lg p-2 text-text-main font-mono" /> </div>
+                        <div> <label className="block text-xs font-medium text-text-secondary mb-1">Churn Mensal</label> <div className="relative"> <input type="number" value={setting.churn} onChange={(e) => onScenarioSettingChange(setting.name, 'churn', Number(e.target.value))} className="w-full bg-background border border-border rounded-lg p-2 pr-8 text-text-main font-sans" /> <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">%</span> </div> </div>
+                        <div> <label className="block text-xs font-medium text-text-secondary mb-1">Adição Mensal (Clientes)</label> <input type="number" value={setting.adicao_mensal} onChange={(e) => onScenarioSettingChange(setting.name, 'adicao_mensal', Number(e.target.value))} className="w-full bg-background border border-border rounded-lg p-2 text-text-main font-sans" /> </div>
                         <hr className="border-border/50" />
                         <div className="text-xs"> <p className="text-text-secondary">Fat. Dezembro: <span className="font-bold text-text-main">{formatCurrency(finalMonth.faturamento_projetado)}</span></p> <p className="text-text-secondary">Clientes Dezembro: <span className="font-bold text-text-main">{formatNumber(finalMonth.clientes_projetados)}</span></p> </div>
                     </div>
@@ -160,28 +160,51 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
        </div>
 
       <ChartCard title="Projeção de Faturamento (Cenários)" loading={false} contentClassName="h-64"> <FaturamentoProjectionChart projections={projections} /> </ChartCard>
-      <ChartCard title="Funil Mensal Projetado" loading={false}> <VisualFunnelProjection config={funnelConfig} /> </ChartCard>
-
-      {/* SEÇÃO 6: PROJEÇÃO TRIMESTRAL */}
+      
+      {/* SEÇÃO PROJEÇÕES */}
       <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-bold text-text-main mb-4">Projeção por Trimestre (Cenário "Bom")</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[0, 1, 2, 3].map(q => {
-                const start = q * 3;
-                const end = start + 3;
-                const quarterData = projections.bom.slice(start, end);
-                const fat = quarterData.reduce((s, m) => s + m.faturamento_projetado, 0);
-                return (
-                    <div key={q} className="bg-bg-subtle border border-border/50 rounded-lg p-4 text-center">
-                        <p className="font-bold text-text-main">{q+1}º Trimestre</p>
-                        <p className="font-bold text-lg text-brand-blue">{formatCurrency(fat)}</p>
-                        <p className="text-xs text-text-secondary">Leads: {formatNumber(leadsMes * 3)}</p>
-                        <p className="text-xs text-text-secondary">Vendas: {formatNumber(vendasMes * 3)}</p>
-                    </div>
-                );
-            })}
+        <h3 className="text-lg font-bold text-text-main mb-4">Projeções (Cenário "Bom")</h3>
+        <div className="space-y-6">
+          {/* Mensal */}
+          <div>
+              <h4 className="font-bold text-text-secondary mb-2">📅 Mensal</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {projections.bom.map((monthData, i) => (
+                      <div key={i} className="bg-bg-subtle border border-border/50 rounded-lg p-2 text-center">
+                          <p className="font-bold text-xs text-text-main">{monthNames[i]}</p>
+                          <p className="font-semibold text-sm text-brand-blue">{formatCurrency(monthData.faturamento_projetado)}</p>
+                      </div>
+                  ))}
+              </div>
+          </div>
+          {/* Semestral */}
+          <div>
+              <h4 className="font-bold text-text-secondary mb-2">📊 Semestral</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[0, 1].map(s => {
+                      const start = s * 6; const end = start + 6;
+                      const semesterData = projections.bom.slice(start, end);
+                      const fat = semesterData.reduce((sum, m) => sum + m.faturamento_projetado, 0);
+                      return ( <div key={s} className="bg-bg-subtle border border-border/50 rounded-lg p-4 text-center"> <p className="font-bold text-text-main">{s+1}º Semestre</p> <p className="font-bold text-lg text-brand-blue">{formatCurrency(fat)}</p> </div> );
+                  })}
+              </div>
+          </div>
+          {/* Trimestral */}
+          <div>
+              <h4 className="font-bold text-text-secondary mb-2">🗓️ Trimestral</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[0, 1, 2, 3].map(q => {
+                      const start = q * 3; const end = start + 3;
+                      const quarterData = projections.bom.slice(start, end);
+                      const fat = quarterData.reduce((sum, m) => sum + m.faturamento_projetado, 0);
+                      return ( <div key={q} className="bg-bg-subtle border border-border/50 rounded-lg p-4 text-center"> <p className="font-bold text-text-main">{q+1}º Trimestre</p> <p className="font-bold text-lg text-brand-blue">{formatCurrency(fat)}</p> <p className="text-xs text-text-secondary">Leads: {formatNumber(leadsMes * 3)} / Vendas: {formatNumber(vendasMes * 3)}</p> </div> );
+                  })}
+              </div>
+          </div>
         </div>
       </div>
+
+      <ChartCard title="Funil Mensal Projetado" loading={false}> <VisualFunnelProjection config={funnelConfig} /> </ChartCard>
     </div>
   );
 };

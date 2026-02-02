@@ -12,8 +12,15 @@ const parseDate = (dateString: string): Date | null => {
   const parts = dateString.split('/');
   if (parts.length === 3) {
     // DD/MM/YYYY
-    const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
-    return isNaN(date.getTime()) ? null : date;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JS month is 0-indexed
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      // Create date as UTC to avoid timezone shifts affecting the date itself
+      const date = new Date(Date.UTC(year, month, day));
+      return date;
+    }
+    return null;
   }
   const parsedDate = new Date(dateString);
   return isNaN(parsedDate.getTime()) ? null : parsedDate;

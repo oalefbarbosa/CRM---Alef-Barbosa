@@ -1,32 +1,21 @@
 
-import React, { useMemo } from 'react';
-import { FunnelConfig } from '../../types';
-import { formatCurrency, formatNumber, formatPercent } from '../../utils/formatters';
+import React, { useMemo, useState } from 'react';
+import { FunnelConfig, Projections, ScenarioType } from '../../types';
+import { formatCurrency, formatNumber } from '../../utils/formatters';
 import { getWorkingDaysInMonth, getPassedWorkingDays } from '../../utils/objectiveCalculations';
-import ProgressBar from '../ProgressBar';
 import ChartCard from '../ChartCard';
 import * as Icons from '../Icons';
+import GoalProgressCard from './GoalProgressCard';
 
 interface CurrentMonthViewProps {
   funnelConfig: FunnelConfig;
   realizedData: { mes: number, faturamento_real: number, vendas_real: number, leads_real: number, reunioes_real: number }[];
+  projections: Projections;
 }
 
-const ProgressCard: React.FC<{title: string, realized: number, goal: number, format: 'currency'|'number'}> = ({ title, realized, goal, format }) => {
-    const percentage = goal > 0 ? (realized / goal) * 100 : 0;
-    const remaining = goal - realized;
-    return(
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-            <p className="text-sm font-bold text-text-secondary uppercase">{title}</p>
-            <p className="text-3xl font-extrabold text-text-main">{format === 'currency' ? formatCurrency(realized) : formatNumber(realized)}</p>
-            <p className="text-xs text-text-secondary">de {format === 'currency' ? formatCurrency(goal) : formatNumber(goal)} meta</p>
-            <ProgressBar value={realized} max={goal} colorClass={percentage > 80 ? 'bg-brand-green' : percentage > 50 ? 'bg-brand-yellow' : 'bg-brand-red'} />
-            <p className="text-xs text-text-secondary">Faltam: <span className="font-bold">{format === 'currency' ? formatCurrency(remaining) : formatNumber(remaining)}</span></p>
-        </div>
-    );
-};
+const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, realizedData, projections }) => {
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioType>('bom');
 
-const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, realizedData }) => {
   const now = new Date();
   const currentMonthIndex = now.getMonth();
   const currentMonthName = now.toLocaleString('pt-BR', { month: 'long' });
@@ -35,70 +24,32 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
   const daysRemaining = daysInMonth - now.getDate();
   
   const monthlyMetrics = useMemo(() => {
-    const leadsMes = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
-    const agendamentosMes = leadsMes * (funnelConfig.taxa_agendamento / 100);
-    const reunioesMes = agendamentosMes * (funnelConfig.taxa_comparecimento / 100);
-    const vendasMes = reunioesMes * (funnelConfig.taxa_conversao / 100);
-    const faturamentoMes = vendasMes * funnelConfig.ticket_medio;
+    const leadsMesMetaFunil = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
+    const vendasMesMetaFunil = leadsMesMetaFunil * (funnelConfig.taxa_agendamento / 100) * (funnelConfig.taxa_comparecimento / 100) * (funnelConfig.taxa_conversao / 100);
     
+    const metaFromScenario = projections[selectedScenario][currentMonthIndex];
+
     const realized = realizedData[currentMonthIndex];
 
     return {
-        leads: { meta: leadsMes, real: realized.leads_real },
-        agendamentos: { meta: agendamentosMes, real: realized.leads_real * (funnelConfig.taxa_agendamento / 100) }, // Projected real
-        reunioes: { meta: reunioesMes, real: realized.reunioes_real },
-        vendas: { meta: vendasMes, real: realized.vendas_real },
-        faturamento: { meta: faturamentoMes, real: realized.faturamento_real }
+        leads: { meta: leadsMesMetaFunil, real: realized.leads_real },
+        vendas: { meta: vendasMesMetaFunil, real: realized.vendas_real },
+        faturamento: { meta: metaFromScenario.faturamento_projetado, real: realized.faturamento_real }
     };
-  }, [funnelConfig, realizedData, currentMonthIndex]);
+  }, [funnelConfig, realizedData, currentMonthIndex, projections, selectedScenario]);
   
   const paceData = useMemo(() => {
     const totalWorkingDays = getWorkingDaysInMonth(currentYear, currentMonthIndex + 1);
     const passedWorkingDays = getPassedWorkingDays();
     const remainingWorkingDays = totalWorkingDays - passedWorkingDays;
-
-    const currentPace = {
-        leads: passedWorkingDays > 0 ? monthlyMetrics.leads.real / passedWorkingDays : 0,
-        reunioes: passedWorkingDays > 0 ? monthlyMetrics.reunioes.real / passedWorkingDays : 0,
-        vendas: passedWorkingDays > 0 ? monthlyMetrics.vendas.real / passedWorkingDays : 0,
-    };
     
     const requiredPace = {
         leads: remainingWorkingDays > 0 ? Math.max(0, monthlyMetrics.leads.meta - monthlyMetrics.leads.real) / remainingWorkingDays : Infinity,
-        reunioes: remainingWorkingDays > 0 ? Math.max(0, monthlyMetrics.reunioes.meta - monthlyMetrics.reunioes.real) / remainingWorkingDays : Infinity,
         vendas: remainingWorkingDays > 0 ? Math.max(0, monthlyMetrics.vendas.meta - monthlyMetrics.vendas.real) / remainingWorkingDays : Infinity,
     };
     
-    return { remainingWorkingDays, currentPace, requiredPace };
+    return { remainingWorkingDays, requiredPace };
   }, [monthlyMetrics, currentYear, currentMonthIndex]);
-
-
-  const FunnelRow: React.FC<{name: string, meta: number, real: number}> = ({name, meta, real}) => {
-    const realPercentOfMeta = meta > 0 ? (real/meta) * 100 : 0;
-    return(
-        <div className="grid grid-cols-5 gap-2 items-center text-xs">
-            <div className="col-span-1 font-bold text-text-main text-right">{name}</div>
-            <div className="col-span-4">
-                <div className="w-full bg-bg-subtle rounded-full h-5 mb-1 relative text-white font-bold text-[10px] text-center">
-                    <div className="absolute left-0 top-0 h-5 bg-slate-500/50 rounded-full" style={{width: '100%'}}>{formatNumber(meta)}</div>
-                    <div className="absolute left-0 top-0 h-5 bg-brand-purple rounded-full" style={{width: `${realPercentOfMeta}%`}}>{formatNumber(real)}</div>
-                </div>
-            </div>
-        </div>
-    );
-  };
-  
-  const PaceRow: React.FC<{label: string, current: number, required: number, isGood: boolean}> = ({ label, current, required, isGood }) => (
-    <div className="flex justify-between text-sm">
-        <span className="text-text-secondary">{label}</span>
-        <div className="flex items-center gap-2 font-mono">
-            <span>{current.toFixed(1)}/dia</span>
-            <span className="text-text-secondary">vs</span>
-            <span className={`font-bold ${isGood ? 'text-brand-green' : 'text-brand-red'}`}>{isFinite(required) ? required.toFixed(1) : '🚨'}/dia</span>
-            {isGood ? <Icons.CheckCircle className="h-4 w-4 text-brand-green"/> : <Icons.AlertTriangle className="h-4 w-4 text-brand-red"/>}
-        </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -106,28 +57,41 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
             <h2 className="text-3xl font-bold text-text-main capitalize">{currentMonthName} {currentYear}</h2>
             <p className="text-text-secondary">Faltam {daysRemaining} dias para o fim do mês.</p>
         </div>
+
+        <div className="flex flex-col sm:flex-row justify-center items-center bg-card border border-border p-3 rounded-xl shadow-sm gap-4">
+            <div>
+                <label className="text-sm font-semibold text-text-secondary mr-2">Cenário:</label>
+                <div className="inline-grid grid-cols-3 bg-bg-subtle p-1 rounded-lg">
+                    {(['inicial', 'bom', 'otimo'] as ScenarioType[]).map(s => (
+                        <button key={s} onClick={() => setSelectedScenario(s)} className={`py-1 px-4 rounded-md font-bold transition-all text-sm capitalize ${selectedScenario === s ? 'bg-brand-blue text-white shadow' : 'text-text-secondary hover:text-text-main'}`}>
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <ProgressCard title="Leads" realized={monthlyMetrics.leads.real} goal={monthlyMetrics.leads.meta} format="number" />
-            <ProgressCard title="Reuniões" realized={monthlyMetrics.reunioes.real} goal={monthlyMetrics.reunioes.meta} format="number" />
-            <ProgressCard title="Vendas" realized={monthlyMetrics.vendas.real} goal={monthlyMetrics.vendas.meta} format="number" />
-            <ProgressCard title="Faturamento" realized={monthlyMetrics.faturamento.real} goal={monthlyMetrics.faturamento.meta} format="currency" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <GoalProgressCard title="Faturamento Mês" realized={monthlyMetrics.faturamento.real} goal={monthlyMetrics.faturamento.meta} format="currency" />
+            <GoalProgressCard title="Vendas Mês" realized={monthlyMetrics.vendas.real} goal={monthlyMetrics.vendas.meta} format="number" />
+            <GoalProgressCard title="Leads Mês" realized={monthlyMetrics.leads.real} goal={monthlyMetrics.leads.meta} format="number" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard title="Funil do Mês (Real vs Meta)" loading={false}><div className="space-y-3 p-2">
-                <FunnelRow name="Leads" meta={monthlyMetrics.leads.meta} real={monthlyMetrics.leads.real} />
-                <FunnelRow name="Agendados" meta={monthlyMetrics.agendamentos.meta} real={monthlyMetrics.agendamentos.real} />
-                <FunnelRow name="Reuniões" meta={monthlyMetrics.reunioes.meta} real={monthlyMetrics.reunioes.real} />
-                <FunnelRow name="Vendas" meta={monthlyMetrics.vendas.meta} real={monthlyMetrics.vendas.real} />
-            </div></ChartCard>
-            <ChartCard title="📈 Ritmo Para Bater a Meta" loading={false}><div className="space-y-3 p-2">
-                <p className="text-sm text-text-secondary text-center mb-4">Faltam <span className="font-bold text-text-main">{paceData.remainingWorkingDays}</span> dias úteis no mês.</p>
-                <PaceRow label="• Ritmo de Leads" current={paceData.currentPace.leads} required={paceData.requiredPace.leads} isGood={paceData.currentPace.leads >= paceData.requiredPace.leads} />
-                <PaceRow label="• Ritmo de Reuniões" current={paceData.currentPace.reunioes} required={paceData.requiredPace.reunioes} isGood={paceData.currentPace.reunioes >= paceData.requiredPace.reunioes} />
-                <PaceRow label="• Ritmo de Vendas" current={paceData.currentPace.vendas} required={paceData.requiredPace.vendas} isGood={paceData.currentPace.vendas >= paceData.requiredPace.vendas} />
-            </div></ChartCard>
-        </div>
+        <ChartCard title="📈 Ritmo Para Bater a Meta" loading={false}>
+            <div className="space-y-4 p-2 text-center">
+                <p className="text-sm text-text-secondary">Faltam <span className="font-bold text-text-main">{paceData.remainingWorkingDays}</span> dias úteis no mês.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-bg-subtle p-3 rounded-lg">
+                        <p className="text-xs text-text-secondary">Leads/dia necessários</p>
+                        <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.leads) ? paceData.requiredPace.leads.toFixed(1) : '🚨'}</p>
+                    </div>
+                     <div className="bg-bg-subtle p-3 rounded-lg">
+                        <p className="text-xs text-text-secondary">Vendas/dia necessárias</p>
+                        <p className="text-2xl font-bold text-brand-orange">{isFinite(paceData.requiredPace.vendas) ? paceData.requiredPace.vendas.toFixed(1) : '🚨'}</p>
+                    </div>
+                </div>
+            </div>
+        </ChartCard>
     </div>
   );
 };
