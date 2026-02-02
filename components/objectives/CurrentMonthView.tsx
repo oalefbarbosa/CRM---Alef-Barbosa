@@ -1,7 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { FunnelConfig, Projections, ScenarioType } from '../../types';
-import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { FunnelConfig, Projections } from '../../types';
 import { getWorkingDaysInMonth, getPassedWorkingDays } from '../../utils/objectiveCalculations';
 import ChartCard from '../ChartCard';
 import * as Icons from '../Icons';
@@ -14,7 +13,6 @@ interface CurrentMonthViewProps {
 }
 
 const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, realizedData, projections }) => {
-  const [selectedScenario, setSelectedScenario] = useState<ScenarioType>('bom');
   
   // Safely initialize date to the 15th of the current month in UTC to avoid timezone issues.
   const [displayedDate, setDisplayedDate] = useState(() => {
@@ -41,20 +39,26 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
   const daysRemaining = isCurrentMonthView ? daysInMonth - now.getUTCDate() : 0;
   
   const monthlyMetrics = useMemo(() => {
-    const leadsMesMetaFunil = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
-    const vendasMesMetaFunil = leadsMesMetaFunil * (funnelConfig.taxa_agendamento / 100) * (funnelConfig.taxa_comparecimento / 100) * (funnelConfig.taxa_conversao / 100);
+    // --- GOALS ARE DERIVED FROM THE ANNUAL GOAL (NECESSARY FUNNEL) ---
+    const monthlyFaturamentoGoal = funnelConfig.faturamento_anual_meta / 12;
     
-    // Ensure we don't go out of bounds if projections are only for one year
-    const projectionIndex = funnelConfig.ano === displayedYear ? displayedMonthIndex : -1;
-    const metaFromScenario = projectionIndex !== -1 ? projections[selectedScenario][projectionIndex] : { faturamento_projetado: 0 };
-    const realized = funnelConfig.ano === displayedYear && realizedData[displayedMonthIndex] ? realizedData[displayedMonthIndex] : { leads_real: 0, vendas_real: 0, faturamento_real: 0 };
+    const vendasAnoNecessarias = funnelConfig.ticket_medio > 0 ? funnelConfig.faturamento_anual_meta / funnelConfig.ticket_medio : 0;
+    const monthlyVendasGoal = vendasAnoNecessarias / 12;
+    
+    const reunioesMesNecessarias = funnelConfig.taxa_conversao > 0 ? monthlyVendasGoal / (funnelConfig.taxa_conversao / 100) : 0;
+    const agendamentosMesNecessarios = funnelConfig.taxa_comparecimento > 0 ? reunioesMesNecessarias / (funnelConfig.taxa_comparecimento / 100) : 0;
+    const monthlyLeadsGoal = funnelConfig.taxa_agendamento > 0 ? agendamentosMesNecessarios / (funnelConfig.taxa_agendamento / 100) : 0;
+
+    const realized = funnelConfig.ano === displayedYear && realizedData[displayedMonthIndex] 
+      ? realizedData[displayedMonthIndex] 
+      : { leads_real: 0, vendas_real: 0, faturamento_real: 0 };
 
     return {
-        leads: { meta: leadsMesMetaFunil, real: realized.leads_real },
-        vendas: { meta: vendasMesMetaFunil, real: realized.vendas_real },
-        faturamento: { meta: metaFromScenario.faturamento_projetado, real: realized.faturamento_real }
+        leads: { meta: monthlyLeadsGoal, real: realized.leads_real },
+        vendas: { meta: monthlyVendasGoal, real: realized.vendas_real },
+        faturamento: { meta: monthlyFaturamentoGoal, real: realized.faturamento_real }
     };
-  }, [funnelConfig, realizedData, displayedMonthIndex, displayedYear, projections, selectedScenario]);
+  }, [funnelConfig, realizedData, displayedMonthIndex, displayedYear]);
   
   const paceData = useMemo(() => {
     if (!isCurrentMonthView) return null;
@@ -83,19 +87,6 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
                 </button>
             </div>
             {isCurrentMonthView && <p className="text-text-secondary">Faltam {daysRemaining} dias para o fim do mês.</p>}
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-center items-center bg-card border border-border p-3 rounded-xl shadow-sm gap-4">
-            <div>
-                <label className="text-sm font-semibold text-text-secondary mr-2">Cenário:</label>
-                <div className="inline-grid grid-cols-3 bg-bg-subtle p-1 rounded-lg">
-                    {(['inicial', 'bom', 'otimo'] as ScenarioType[]).map(s => (
-                        <button key={s} onClick={() => setSelectedScenario(s)} className={`py-1 px-4 rounded-md font-bold transition-all text-sm capitalize ${selectedScenario === s ? 'bg-brand-blue text-white shadow' : 'text-text-secondary hover:text-text-main'}`}>
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

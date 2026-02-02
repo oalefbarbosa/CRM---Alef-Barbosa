@@ -48,14 +48,13 @@ const FaturamentoProjectionChart: React.FC<{ projections: Projections }> = ({ pr
     return <Bar data={chartData} options={chartOptions} />;
 };
 
-const VisualFunnelProjection: React.FC<{ config: FunnelConfig }> = ({ config }) => {
-    const leadsMes = config.cpl > 0 ? config.investimento_mensal / config.cpl : 0;
-    const agendamentosMes = leadsMes * (config.taxa_agendamento / 100);
-    const reunioesMes = agendamentosMes * (config.taxa_comparecimento / 100);
-    const vendasMes = reunioesMes * (config.taxa_conversao / 100);
-    const stages = [ { name: 'Leads', value: leadsMes, color: 'bg-blue-500' }, { name: 'Agendamentos', value: agendamentosMes, color: 'bg-cyan-500' }, { name: 'Reuniões', value: reunioesMes, color: 'bg-yellow-500' }, { name: 'Vendas', value: vendasMes, color: 'bg-green-500' } ];
-    return ( <div className="space-y-1">{stages.map(stage => ( <div key={stage.name} className="flex items-center gap-2"> <div className="w-28 text-right text-xs text-text-secondary">{stage.name}</div> <div className="flex-grow bg-bg-subtle rounded-full h-6"> <div className={`${stage.color} h-6 rounded-full flex items-center justify-end pr-2`} style={{ width: `${Math.max(5, (stage.value / (leadsMes || 1)) * 100)}%`}}> <span className="text-white font-bold text-xs">{formatNumber(stage.value)}</span> </div> </div> </div> ))} </div> );
-};
+const MetricRow: React.FC<{label: string; value: string;}> = ({label, value}) => (
+    <div className="flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0">
+        <span className="text-text-secondary">{label}</span>
+        <span className="font-sans font-bold text-text-main">{value}</span>
+    </div>
+);
+
 
 // --- MAIN VIEW COMPONENT ---
 
@@ -76,28 +75,44 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
     setFunnelConfig({ ...funnelConfig, [e.target.name]: Number(e.target.value) || 0 });
   };
   
-  // Derived calculations
-  const leadsMes = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
-  const agendamentosMes = leadsMes * (funnelConfig.taxa_agendamento / 100);
-  const reunioesMes = agendamentosMes * (funnelConfig.taxa_comparecimento / 100);
-  const vendasMes = reunioesMes * (funnelConfig.taxa_conversao / 100);
-  const valorVendidoMes = vendasMes * funnelConfig.ticket_medio;
-  const roas = funnelConfig.investimento_mensal > 0 ? valorVendidoMes / funnelConfig.investimento_mensal : 0;
-  
-  const totalClientesProjetado = funnelConfig.clientes_atuais + (vendasMes * 12);
-  const totalLeadsAno = leadsMes * 12;
+  // --- FUNIL NECESSÁRIO (PARA BATER A META) ---
+  const vendasAnoNecessarias = funnelConfig.ticket_medio > 0 ? funnelConfig.faturamento_anual_meta / funnelConfig.ticket_medio : 0;
+  const vendasMesNecessarias = vendasAnoNecessarias / 12;
+  const reunioesMesNecessarias = funnelConfig.taxa_conversao > 0 ? vendasMesNecessarias / (funnelConfig.taxa_conversao / 100) : 0;
+  const agendamentosMesNecessarios = funnelConfig.taxa_comparecimento > 0 ? reunioesMesNecessarias / (funnelConfig.taxa_comparecimento / 100) : 0;
+  const leadsMesNecessarios = funnelConfig.taxa_agendamento > 0 ? agendamentosMesNecessarios / (funnelConfig.taxa_agendamento / 100) : 0;
+  const investimentoMesNecessario = leadsMesNecessarios * funnelConfig.cpl;
 
+  // Anual Necessário
+  const leadsAnoNecessarios = leadsMesNecessarios * 12;
+  const investimentoAnoNecessario = investimentoMesNecessario * 12;
+
+  // --- FUNIL ATUAL (PROJETADO PELO INVESTIMENTO) ---
+  const leadsMesAtual = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;
+  const agendamentosMesAtual = leadsMesAtual * (funnelConfig.taxa_agendamento / 100);
+  const reunioesMesAtual = agendamentosMesAtual * (funnelConfig.taxa_comparecimento / 100);
+  const vendasMesAtual = reunioesMesAtual * (funnelConfig.taxa_conversao / 100);
+  const faturamentoMesAtual = vendasMesAtual * funnelConfig.ticket_medio;
+  const roasAtual = funnelConfig.investimento_mensal > 0 ? faturamentoMesAtual / funnelConfig.investimento_mensal : 0;
+
+  // Anual Atual
+  const faturamentoAnoAtual = faturamentoMesAtual * 12;
+  const leadsAnoAtual = leadsMesAtual * 12;
+  const vendasAnoAtual = vendasMesAtual * 12;
+  const investimentoAnoAtual = funnelConfig.investimento_mensal * 12;
+
+  const metaAtingidaPercentual = funnelConfig.faturamento_anual_meta > 0 ? (faturamentoAnoAtual / funnelConfig.faturamento_anual_meta) * 100 : 0;
+  
   const scenarioBorders: Record<ScenarioType, string> = { inicial: 'border-slate-500', bom: 'border-blue-500', otimo: 'border-green-500' };
-  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
   return (
     <div className="space-y-6">
-      {/* SEÇÃO 1: RESUMO ANUAL */}
+      {/* SEÇÃO 1: RESUMO ANUAL (BASEADO NO NECESSÁRIO) */}
       <div className="bg-card border border-border rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <SummaryCard title="Meta Anual" value={formatCurrency(funnelConfig.faturamento_anual_meta)} />
-              <SummaryCard title="Clientes/Ano (Funil)" value={formatNumber(totalClientesProjetado)} />
-              <SummaryCard title="Leads/Ano (Funil)" value={formatNumber(totalLeadsAno)} />
+              <SummaryCard title="Vendas/Ano (Necessário)" value={formatNumber(Math.round(vendasAnoNecessarias))} />
+              <SummaryCard title="Leads/Ano (Necessário)" value={formatNumber(Math.round(leadsAnoNecessarios))} />
           </div>
       </div>
       
@@ -105,40 +120,80 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
       <div className="bg-card border border-border rounded-xl shadow-sm p-6">
         <h3 className="text-lg font-bold text-text-main mb-1">Configurar Funil de Vendas</h3>
         <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-text-secondary">Ajuste as premissas para calcular as metas mensais.</p>
+          <p className="text-sm text-text-secondary">Ajuste as premissas para calcular as projeções.</p>
           <select value={funnelConfig.ano} onChange={(e) => onYearChange(Number(e.target.value))} className="bg-background border border-border rounded-lg px-3 py-1 text-sm text-text-main focus:outline-none focus:ring-1 focus:ring-brand-blue">
             {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            {/* Coluna Esquerda: Inputs */}
-            <div className="grid grid-cols-2 gap-4">
-                <InputField name="faturamento_anual_meta" label="Meta Faturamento" type="currency" value={funnelConfig.faturamento_anual_meta} onChange={handleInputChange} />
-                <InputField name="ticket_medio" label="Ticket Médio" type="currency" value={funnelConfig.ticket_medio} onChange={handleInputChange} />
-                <InputField name="clientes_atuais" label="Clientes Atuais" type="number" value={funnelConfig.clientes_atuais} onChange={handleInputChange} />
-                <InputField name="investimento_mensal" label="Investimento Mensal" type="currency" value={funnelConfig.investimento_mensal} onChange={handleInputChange} />
-                <InputField name="cpl" label="CPL Esperado" type="currency" value={funnelConfig.cpl} onChange={handleInputChange} />
-                <InputField name="taxa_agendamento" label="Taxa Agendamento" type="percent" value={funnelConfig.taxa_agendamento} onChange={handleInputChange} />
-                <InputField name="taxa_comparecimento" label="Taxa Comparec." type="percent" value={funnelConfig.taxa_comparecimento} onChange={handleInputChange} />
-                <InputField name="taxa_conversao" label="Taxa Conversão" type="percent" value={funnelConfig.taxa_conversao} onChange={handleInputChange} />
-            </div>
-            {/* Coluna Direita: Calculados */}
-            <div className="bg-bg-subtle border border-border rounded-lg p-4 space-y-3 h-full">
-                <h4 className="font-bold text-base text-text-main mb-3">Funil Calculado</h4>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Leads/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(leadsMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Agendamentos/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(agendamentosMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Reuniões/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(reunioesMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Vendas/mês</span><span className="font-sans font-bold text-text-main text-base">{formatNumber(vendasMes)}</span></div>
-                <hr className="border-border/50 my-2" />
-                <div className="flex justify-between items-center"><span className="text-text-secondary">Valor Vendido/mês</span><span className="font-sans font-bold text-green-400 text-base">{formatCurrency(valorVendidoMes)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-text-secondary">ROAS</span><span className={`font-sans font-bold text-base ${roas > 2.5 ? 'text-green-400' : 'text-yellow-400'}`}>{roas.toFixed(2)}x</span></div>
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+            <InputField name="faturamento_anual_meta" label="Meta Faturamento" type="currency" value={funnelConfig.faturamento_anual_meta} onChange={handleInputChange} />
+            <InputField name="ticket_medio" label="Ticket Médio" type="currency" value={funnelConfig.ticket_medio} onChange={handleInputChange} />
+            <InputField name="clientes_atuais" label="Clientes Atuais" type="number" value={funnelConfig.clientes_atuais} onChange={handleInputChange} />
+            <InputField name="investimento_mensal" label="Investimento Mensal" type="currency" value={funnelConfig.investimento_mensal} onChange={handleInputChange} />
+            <InputField name="cpl" label="CPL Esperado" type="currency" value={funnelConfig.cpl} onChange={handleInputChange} />
+            <InputField name="taxa_agendamento" label="Taxa Agendamento" type="percent" value={funnelConfig.taxa_agendamento} onChange={handleInputChange} />
+            <InputField name="taxa_comparecimento" label="Taxa Comparec." type="percent" value={funnelConfig.taxa_comparecimento} onChange={handleInputChange} />
+            <InputField name="taxa_conversao" label="Taxa Conversão" type="percent" value={funnelConfig.taxa_conversao} onChange={handleInputChange} />
         </div>
       </div>
       
-      {/* SEÇÃO 3: CONFIGURADOR CENÁRIOS */}
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           {/* SEÇÃO 3: PROJEÇÃO PARA BATER META */}
+            <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+                <h3 className="text-base font-bold text-text-main mb-3">📎 Projeção para Bater a Meta</h3>
+                 <table className="w-full">
+                    <thead className="text-xs text-text-secondary uppercase"><tr><th className="py-1 text-left font-semibold">Métrica</th><th className="py-1 text-right font-semibold">Mensal</th><th className="py-1 text-right font-semibold">Anual</th></tr></thead>
+                    <tbody>
+                        <tr className="border-t border-border/50"><td className="py-2 text-sm">Leads necessários</td><td className="py-2 text-right font-mono font-bold">{formatNumber(Math.round(leadsMesNecessarios))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(leadsAnoNecessarios))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2 text-sm">Agendamentos</td><td className="py-2 text-right font-mono font-bold">{formatNumber(Math.round(agendamentosMesNecessarios))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(agendamentosMesNecessarios*12))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2 text-sm">Reuniões</td><td className="py-2 text-right font-mono font-bold">{formatNumber(Math.round(reunioesMesNecessarias))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(reunioesMesNecessarias*12))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2 text-sm">Vendas</td><td className="py-2 text-right font-mono font-bold">{formatNumber(Math.round(vendasMesNecessarias))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(vendasAnoNecessarias))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2 text-sm">Investimento</td><td className="py-2 text-right font-mono font-bold">{formatCurrency(investimentoMesNecessario)}</td><td className="py-2 text-right font-mono">{formatCurrency(investimentoAnoNecessario)}</td></tr>
+                    </tbody>
+                 </table>
+            </div>
+
+            {/* SEÇÃO 4: FUNIL ATUAL */}
+            <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+                <h3 className="text-base font-bold text-text-main mb-3">📉 Funil com Investimento Atual ({formatCurrency(funnelConfig.investimento_mensal)}/mês)</h3>
+                <div className="space-y-1">
+                    <MetricRow label="Leads/mês" value={formatNumber(Math.round(leadsMesAtual))} />
+                    <MetricRow label="Agendamentos/mês" value={formatNumber(Math.round(agendamentosMesAtual))} />
+                    <MetricRow label="Reuniões/mês" value={formatNumber(Math.round(reunioesMesAtual))} />
+                    <MetricRow label="Vendas/mês" value={formatNumber(Math.round(vendasMesAtual))} />
+                    <MetricRow label="Valor Vendido/mês" value={formatCurrency(faturamentoMesAtual)} />
+                    <MetricRow label="Faturamento/ano projetado" value={formatCurrency(faturamentoAnoAtual)} />
+                    <MetricRow label="ROAS" value={`${roasAtual.toFixed(2)}x`} />
+                </div>
+            </div>
+       </div>
+
+      {/* SEÇÃO 5: ANÁLISE DE GAP */}
        <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-           <h3 className="text-lg font-bold text-text-main mb-4">Definir Cenários de Crescimento</h3>
+           <h3 className="text-lg font-bold text-text-main mb-4">Análise de Gap</h3>
+            <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-lg flex flex-col sm:flex-row items-center gap-3 text-orange-400 mb-6">
+                <Icons.AlertTriangle className="h-8 w-8 flex-shrink-0" />
+                <div>
+                    <p className="font-bold">⚠️ Alerta: Investimento atual atinge apenas {formatNumber(Math.round(metaAtingidaPercentual))}% da meta.</p>
+                    <p className="text-sm">💡 Para bater a meta, aumente o investimento para {formatCurrency(investimentoMesNecessario)}/mês ou melhore as taxas de conversão do funil.</p>
+                </div>
+            </div>
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-sm">
+                     <thead className="text-xs text-text-secondary uppercase"><tr><th className="py-1 text-left font-semibold">Métrica Anual</th><th className="py-1 text-right font-semibold">Necessário</th><th className="py-1 text-right font-semibold">Atual</th><th className="py-1 text-right font-semibold">Gap</th></tr></thead>
+                     <tbody>
+                        <tr className="border-t border-border/50"><td className="py-2">Faturamento/ano</td><td className="py-2 text-right font-mono">{formatCurrency(funnelConfig.faturamento_anual_meta)}</td><td className="py-2 text-right font-mono">{formatCurrency(faturamentoAnoAtual)}</td><td className="py-2 text-right font-mono text-brand-red font-bold">{formatCurrency(faturamentoAnoAtual - funnelConfig.faturamento_anual_meta)}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2">Vendas/ano</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(vendasAnoNecessarias))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(vendasAnoAtual))}</td><td className="py-2 text-right font-mono text-brand-red font-bold">{formatNumber(Math.round(vendasAnoAtual - vendasAnoNecessarias))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2">Leads/ano</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(leadsAnoNecessarios))}</td><td className="py-2 text-right font-mono">{formatNumber(Math.round(leadsAnoAtual))}</td><td className="py-2 text-right font-mono text-brand-red font-bold">{formatNumber(Math.round(leadsAnoAtual - leadsAnoNecessarios))}</td></tr>
+                        <tr className="border-t border-border/50"><td className="py-2">Investimento/ano</td><td className="py-2 text-right font-mono">{formatCurrency(investimentoAnoNecessario)}</td><td className="py-2 text-right font-mono">{formatCurrency(investimentoAnoAtual)}</td><td className="py-2 text-right font-mono text-brand-red font-bold">{formatCurrency(investimentoAnoAtual - investimentoAnoNecessario)}</td></tr>
+                     </tbody>
+                </table>
+            </div>
+       </div>
+
+      {/* SEÇÃO 6: CONFIGURADOR CENÁRIOS */}
+       <div className="bg-card border border-border rounded-xl shadow-sm p-6">
+           <h3 className="text-lg font-bold text-text-main mb-4">Simular Cenários de Crescimento (Receita Recorrente)</h3>
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {scenarioSettings.map((setting) => {
                   const projection = projections[setting.name];
@@ -157,51 +212,7 @@ const DefineGoalsView: React.FC<DefineGoalsViewProps> = ({ funnelConfig, setFunn
        </div>
 
       <ChartCard title="Projeção de Faturamento (Cenários)" loading={false} contentClassName="h-64"> <FaturamentoProjectionChart projections={projections} /> </ChartCard>
-      
-      {/* SEÇÃO PROJEÇÕES */}
-      <div className="bg-card border border-border rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-bold text-text-main mb-4">Projeções (Cenário "Bom")</h3>
-        <div className="space-y-6">
-          {/* Mensal */}
-          <div>
-              <h4 className="font-bold text-text-secondary mb-2">📅 Mensal</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                  {projections.bom.map((monthData, i) => (
-                      <div key={i} className="bg-bg-subtle border border-border/50 rounded-lg p-2 text-center">
-                          <p className="font-bold text-xs text-text-main">{monthNames[i]}</p>
-                          <p className="font-semibold text-sm text-brand-blue">{formatCurrency(monthData.faturamento_projetado)}</p>
-                      </div>
-                  ))}
-              </div>
-          </div>
-          {/* Semestral */}
-          <div>
-              <h4 className="font-bold text-text-secondary mb-2">📊 Semestral</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[0, 1].map(s => {
-                      const start = s * 6; const end = start + 6;
-                      const semesterData = projections.bom.slice(start, end);
-                      const fat = semesterData.reduce((sum, m) => sum + m.faturamento_projetado, 0);
-                      return ( <div key={s} className="bg-bg-subtle border border-border/50 rounded-lg p-4 text-center"> <p className="font-bold text-text-main">{s+1}º Semestre</p> <p className="font-bold text-lg text-brand-blue">{formatCurrency(fat)}</p> </div> );
-                  })}
-              </div>
-          </div>
-          {/* Trimestral */}
-          <div>
-              <h4 className="font-bold text-text-secondary mb-2">🗓️ Trimestral</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[0, 1, 2, 3].map(q => {
-                      const start = q * 3; const end = start + 3;
-                      const quarterData = projections.bom.slice(start, end);
-                      const fat = quarterData.reduce((sum, m) => sum + m.faturamento_projetado, 0);
-                      return ( <div key={q} className="bg-bg-subtle border border-border/50 rounded-lg p-4 text-center"> <p className="font-bold text-text-main">{q+1}º Trimestre</p> <p className="font-bold text-lg text-brand-blue">{formatCurrency(fat)}</p> <p className="text-xs text-text-secondary">Leads: {formatNumber(leadsMes * 3)} / Vendas: {formatNumber(vendasMes * 3)}</p> </div> );
-                  })}
-              </div>
-          </div>
-        </div>
-      </div>
 
-      <ChartCard title="Funil Mensal Projetado" loading={false}> <VisualFunnelProjection config={funnelConfig} /> </ChartCard>
     </div>
   );
 };
