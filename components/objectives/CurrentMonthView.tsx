@@ -20,20 +20,20 @@ const CurrentMonthView: React.FC<CurrentMonthViewProps> = ({ funnelConfig, reali
   const changeMonth = (increment: number) => {
     setDisplayedDate(prevDate => {
         const newDate = new Date(prevDate);
-        newDate.setMonth(prevDate.getMonth() + increment);
+        newDate.setUTCMonth(prevDate.getUTCMonth() + increment);
         return newDate;
     });
   };
 
-  const displayedMonthIndex = displayedDate.getMonth();
-  const displayedYear = displayedDate.getFullYear();
-  const displayedMonthName = displayedDate.toLocaleString('pt-BR', { month: 'long' });
+  const displayedMonthIndex = displayedDate.getUTCMonth();
+  const displayedYear = displayedDate.getUTCFullYear();
+  const displayedMonthName = displayedDate.toLocaleString('pt-BR', { month: 'long', timeZone: 'UTC' });
 
   const now = new Date();
-  const isCurrentMonthView = displayedMonthIndex === now.getMonth() && displayedYear === now.getFullYear();
+  const isCurrentMonthView = displayedMonthIndex === now.getUTCMonth() && displayedYear === now.getUTCFullYear();
 
-  const daysInMonth = new Date(displayedYear, displayedMonthIndex + 1, 0).getDate();
-  const daysRemaining = daysInMonth - now.getDate();
+  const daysInMonth = new Date(Date.UTC(displayedYear, displayedMonthIndex + 1, 0)).getUTCDate();
+  const daysRemaining = daysInMonth - now.getUTCDate();
   
   const monthlyMetrics = useMemo(() => {
     const leadsMesMetaFunil = funnelConfig.cpl > 0 ? funnelConfig.investimento_mensal / funnelConfig.cpl : 0;

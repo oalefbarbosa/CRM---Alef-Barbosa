@@ -32,7 +32,7 @@ type SavingStatus = 'idle' | 'saving' | 'saved' | 'error';
 const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => {
   const TABS = ['🎯 Definir Metas', '📅 Mês Atual', '📊 Acompanhar Ano'];
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(new Date().getUTCFullYear());
   
   // Local state for UI
   const [funnelConfig, setFunnelConfig] = useState<FunnelConfig>({ ...DEFAULT_FUNNEL_CONFIG, ano: selectedYear });
@@ -123,7 +123,8 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
       mes: i + 1, faturamento_real: 0, vendas_real: 0, leads_real: 0, reunioes_real: 0,
     }));
 
-    const reuniaoStatuses = ['reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho'];
+    const reuniaoStatuses = ['reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho', 'venda'];
+    const WON_STATUSES = ['ganho', 'venda'];
 
     allCrmData.forEach(lead => {
       const leadYear = lead.dataCriacao.getUTCFullYear();
@@ -139,14 +140,14 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
       }
 
       const closeDate = lead.dataFechamento;
-      if (lead.status === 'ganho' && closeDate && closeDate.getUTCFullYear() === selectedYear) {
+      if (WON_STATUSES.includes(lead.status) && closeDate && closeDate.getUTCFullYear() === selectedYear) {
         monthlyData[closeDate.getUTCMonth()].vendas_real++;
         monthlyData[closeDate.getUTCMonth()].faturamento_real += lead.valor;
       }
     });
     
     const clientes_real_total = new Set(
-        allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento.getUTCFullYear() <= selectedYear)
+        allCrmData.filter(l => WON_STATUSES.includes(l.status) && l.dataFechamento && l.dataFechamento.getUTCFullYear() <= selectedYear)
                    .map(l => l.nome) 
     ).size;
 
@@ -155,8 +156,8 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
   }, [allCrmData, selectedYear]);
   
   const availableYears = useMemo(() => {
-      const years = new Set(allCrmData.map(d => d.dataCriacao.getFullYear()));
-      const currentYear = new Date().getFullYear();
+      const years = new Set(allCrmData.map(d => d.dataCriacao.getUTCFullYear()));
+      const currentYear = new Date().getUTCFullYear();
       years.add(currentYear);
       years.add(currentYear + 1);
       return Array.from(years).sort((a,b) => Number(b) - Number(a));

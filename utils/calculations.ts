@@ -4,6 +4,7 @@ import { CrmData, CampaignData, DashboardGeralMetrics, FunnelConversion, FunnelS
 const FUNNEL_STAGES_ORDER = [ 'leads', 'em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação', 'ganho' ];
 const ACTIVE_PIPELINE_STAGES = ['em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação'];
 const TIME_FUNNEL_STAGES_ORDER = ['em prospecção', 'reunião de triagem', 'reunião de proposta', 'em follow up', 'em negociação'];
+const WON_STATUSES = ['ganho', 'venda']; // Now accepts both 'ganho' and 'venda'
 
 const calculateChange = (current: number, previous: number): number => {
     if (previous === 0) return current > 0 ? Infinity : 0;
@@ -50,8 +51,8 @@ export const calculateDashboardGeralMetrics = (
     if(dateRange.endDate) inclusiveEndDate.setUTCHours(23, 59, 59, 999);
 
     // Sales: Leads CLOSED in the period (based on dataFechamento)
-    const wonLeadsCurrent = allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento >= dateRange.startDate! && l.dataFechamento <= inclusiveEndDate);
-    const wonLeadsPrev = prevStart && prevEnd ? allCrmData.filter(l => l.status === 'ganho' && l.dataFechamento && l.dataFechamento >= prevStart && l.dataFechamento <= prevEnd) : [];
+    const wonLeadsCurrent = allCrmData.filter(l => WON_STATUSES.includes(l.status) && l.dataFechamento && l.dataFechamento >= dateRange.startDate! && l.dataFechamento <= inclusiveEndDate);
+    const wonLeadsPrev = prevStart && prevEnd ? allCrmData.filter(l => WON_STATUSES.includes(l.status) && l.dataFechamento && l.dataFechamento >= prevStart && l.dataFechamento <= prevEnd) : [];
 
     // Losses: Leads LOST in the period (based on dataAtualizacao)
     const lostLeadsCurrent = allCrmData.filter(l => l.status === 'perdido' && l.dataAtualizacao && l.dataAtualizacao >= dateRange.startDate! && l.dataAtualizacao <= inclusiveEndDate);
@@ -62,8 +63,8 @@ export const calculateDashboardGeralMetrics = (
     const totalActivePipelineLeads = allCrmData.filter(l => ACTIVE_PIPELINE_STAGES.includes(l.status));
     
     // --- COHORT-BASED METRICS (Performance of leads CREATED in the period) ---
-    const wonLeadsFromCreatedCohort = currentCrmData.filter(l => l.status === 'ganho');
-    const wonLeadsFromCreatedCohortPrev = previousPeriodCrmData.filter(l => l.status === 'ganho');
+    const wonLeadsFromCreatedCohort = currentCrmData.filter(l => WON_STATUSES.includes(l.status));
+    const wonLeadsFromCreatedCohortPrev = previousPeriodCrmData.filter(l => WON_STATUSES.includes(l.status));
 
     // --- 1. Top KPIs ---
     // FIX: Correctly shape the `lastSale` property on initialization to match the expected type.
@@ -125,7 +126,7 @@ export const calculateDashboardGeralMetrics = (
                 stageProgressCounts[FUNNEL_STAGES_ORDER[i]]++;
             }
         }
-        if (ACTIVE_PIPELINE_STAGES.includes(l.status) || l.status === 'ganho') {
+        if (ACTIVE_PIPELINE_STAGES.includes(l.status) || WON_STATUSES.includes(l.status)) {
              stageValues[l.status] = (stageValues[l.status] || 0) + l.valor;
         }
     });
@@ -186,7 +187,7 @@ const calculateResponsibleAnalysis = (crmData: CrmData[], globalAvgTime: number,
     const reps = Array.from(new Set(crmData.map(l => l.responsavel).filter(r => r && r !== 'N/A')));
     const detailed: ResponsibleData[] = reps.map(rep => {
         const repLeads = crmData.filter(l => l.responsavel === rep);
-        const wonLeads = repLeads.filter(l => l.status === 'ganho' && l.dataFechamento);
+        const wonLeads = repLeads.filter(l => WON_STATUSES.includes(l.status) && l.dataFechamento);
         const totalValue = wonLeads.reduce((s, l) => s + l.valor, 0);
         const conversionRate = repLeads.length > 0 ? (wonLeads.length / repLeads.length) * 100 : 0;
         const avgTicket = wonLeads.length > 0 ? totalValue / wonLeads.length : 0;
@@ -268,7 +269,7 @@ const calculateCampaignAnalysis = (
     const leadsFromMetaAdsInPeriod = currentCrmData.filter(l => l.source === 'Meta Ads');
     
     const salesFromMetaAdsPrevPeriod = allCrmData.filter(sale => {
-        if (sale.source !== 'Meta Ads' || sale.status !== 'ganho' || !sale.dataFechamento) return false;
+        if (sale.source !== 'Meta Ads' || !WON_STATUSES.includes(sale.status) || !sale.dataFechamento) return false;
         const date = sale.dataFechamento;
         if (dateRange.startDate && dateRange.endDate) {
             const duration = dateRange.endDate.getTime() - dateRange.startDate.getTime();
