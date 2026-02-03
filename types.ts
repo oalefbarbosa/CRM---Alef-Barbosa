@@ -23,6 +23,9 @@ export interface CrmData {
   url: string;
   source: string; // Meta Ads, indicação, etc.
   campaign: string;
+  abc: string; // Classificação A, B, C
+  tempoContrato: number; // Meses (3, 6, 12)
+  pagamento: string; // 'MRR', 'A vista', etc.
 }
 
 export interface CampaignData {
@@ -237,6 +240,32 @@ export interface StageKpi {
     conversion: number;
 }
 
+// --- NEW SECTIONS ---
+
+export interface LossAnalysis {
+    reasons: { reason: string; count: number; percentage: number }[];
+    attemptsToWin: number;
+    attemptsToLose: number;
+    attemptsDistribution: { labels: string[]; wins: number[]; losses: number[] };
+}
+
+export interface QualityAnalysis {
+    temperature: { label: string; total: number; wins: number; rate: number }[];
+    abc: { label: string; total: number; rate: number; avgTicket: number }[];
+    services: { label: string; total: number; rate: number; pipeline: number }[];
+}
+
+export interface AcquisitionAnalysis {
+    sources: { label: string; total: number; rate: number; pipeline: number }[];
+    evolution: { labels: string[]; count: number[] };
+}
+
+export interface ContractsAnalysis {
+    duration: { label: string; count: number; percentage: number; value: number }[];
+    ltv: { average: number; totalProjected: number; byService: { service: string, ltv: number }[] };
+    futureRevenue: { next3Months: number; next6Months: number; expiring90Days: number };
+}
+
 export interface DashboardGeralMetrics {
     // Top KPIs
     totalLeadsKpi: { count: number; value: number; conversionToNext: number; };
@@ -261,12 +290,17 @@ export interface DashboardGeralMetrics {
     forecast: ForecastAnalysis;
     timeFunnel: TimeFunnelAnalysis;
     
+    // New Sections
+    lossAnalysis: LossAnalysis;
+    qualityAnalysis: QualityAnalysis;
+    acquisitionAnalysis: AcquisitionAnalysis;
+    contractsAnalysis: ContractsAnalysis;
+    
     // Funnel & Velocity
     visualFunnel: { stages: FunnelStage[]; conversions: FunnelConversion[]; bottleneck: FunnelConversion | null; opportunity: FunnelConversion | null; };
     velocity: FunnelVelocity;
 }
 
-// FIX: Add ObjectiveConfig and Scenario types for ObjectivesConfigurator component
 export type Scenario = 'conservador' | 'moderado' | 'agressivo';
 
 export interface ObjectiveConfig {
@@ -279,8 +313,6 @@ export interface ObjectiveConfig {
   leads_meta_base: number;
   conversao_meta: number;
 }
-
-// --- OBJECTIVES V2 TYPES ---
 
 export type ScenarioType = 'inicial' | 'bom' | 'otimo';
 
@@ -315,7 +347,6 @@ export interface Projections {
     otimo: MonthlyScenarioData[];
 }
 
-// FIX: Add MergedData type for ObjectivesTable and ObjectivesChart components
 export interface MergedData {
   id: string;
   ano: number;

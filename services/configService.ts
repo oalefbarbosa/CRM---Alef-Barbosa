@@ -57,6 +57,7 @@ export const loadConfig = (): Promise<ConfigMap> => {
 
 /**
  * Saves a specific configuration to the Google Sheet via Apps Script.
+ * Includes retry logic to handle transient 'Failed to fetch' errors from Google Script.
  * @param key The unique key for the configuration (e.g., 'funnel_config_2024').
  * @param value The configuration object to save.
  * @returns A promise indicating success or failure.
@@ -68,27 +69,37 @@ export const saveConfig = async (key: string, value: object): Promise<{ success:
         return { success: false, error: errorMsg };
     }
 
-    try {
-        const response = await fetch(SAVE_SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ key, value }),
-        });
+    const attemptSave = async (retries = 1): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const response = await fetch(SAVE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                redirect: 'follow', // Explicitly follow redirects (common in GAS)
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ key, value }),
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Erro do servidor: ${response.status} ${errorText}`);
-        }
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Erro do servidor: ${response.status} ${errorText}`);
+            }
 
-        const result = await response.json();
-        if (result.success) {
-            return { success: true };
-        } else {
-            throw new Error(result.error || 'O script retornou um erro desconhecido.');
+            const result = await response.json();
+            if (result.success) {
+                return { success: true };
+            } else {
+                throw new Error(result.error || 'O script retornou um erro desconhecido.');
+            }
+        } catch (error) {
+            if (retries > 0) {
+                console.warn(`Erro ao salvar (tentativa ${2 - retries}/2). Tentando novamente...`, error);
+                await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+                return attemptSave(retries - 1);
+            }
+            console.error('Erro ao salvar configuração após tentativas:', error);
+            return { success: false, error: (error as Error).message };
         }
-    } catch (error) {
-        console.error('Erro ao salvar configuração:', error);
-        return { success: false, error: (error as Error).message };
-    }
+    };
+
+    return attemptSave();
 };

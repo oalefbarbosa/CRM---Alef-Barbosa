@@ -1,4 +1,4 @@
-import { CrmData, CampaignData, DashboardGeralMetrics, FunnelConversion, FunnelStage, Alert, CampaignPerformanceData, CampaignAnalysis, ResponsibleAnalysis, ForecastAnalysis, TimeFunnelAnalysis, ResponsibleData, FunnelVelocity } from '../types';
+import { CrmData, CampaignData, DashboardGeralMetrics, FunnelConversion, FunnelStage, Alert, CampaignPerformanceData, CampaignAnalysis, ResponsibleAnalysis, ForecastAnalysis, TimeFunnelAnalysis, ResponsibleData, FunnelVelocity, LossAnalysis, QualityAnalysis, AcquisitionAnalysis, ContractsAnalysis } from '../types';
 
 const FUNNEL_STAGES_ORDER = ['novo lead', 'tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up', 'ganho'];
 const ACTIVE_PIPELINE_STAGES = ['tentativa de contato', 'contato feito', 'qualificado', 'call agendada', 'call realizada', 'em follow up'];
@@ -14,6 +14,24 @@ const diffInDays = (date1: Date, date2: Date): number => {
     if(!date1 || !date2) return 0;
     return (date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24);
 }
+
+// HELPER: Calculate Total Contract Value (TCV) based on monthly value * duration
+// Respects "Pagamento" type: if 'a vista', it does not multiply.
+export const getLeadValue = (lead: CrmData): number => {
+    const pagamento = (lead.pagamento || '').toLowerCase();
+    
+    // Check for "a vista" or "único" or similar one-time payment indicators
+    if (pagamento.includes('vista') || pagamento.includes('pontual') || pagamento.includes('unico') || pagamento.includes('único')) {
+        return lead.valor;
+    }
+
+    // Default behavior (MRR/Recurring)
+    // If tempoContrato is defined and > 0, use it. 
+    // If NOT defined, default to 1 (do NOT assume 12 months, use the raw value).
+    const duration = (lead.tempoContrato && lead.tempoContrato > 0) ? lead.tempoContrato : 1;
+    
+    return lead.valor * duration;
+};
 
 const SUGGESTIONS: {[key: string]: string} = {
   'leads_em prospecção': 'O time de prospecção precisa de mais agilidade para o primeiro contato.',
@@ -66,24 +84,24 @@ export const calculateDashboardGeralMetrics = (
     const wonLeadsFromCreatedCohortPrev = previousPeriodCrmData.filter(l => WON_STATUSES.includes(l.status));
 
     // --- 1. Top KPIs ---
-    // FIX: Correctly shape the `lastSale` property on initialization to match the expected type.
     const lastSaleLead = wonLeadsCurrent.length > 0 ? [...wonLeadsCurrent].sort((a,b) => b.dataFechamento!.getTime() - a.dataFechamento!.getTime())[0] : null;
 
     const closedSales = {
         count: { current: wonLeadsCurrent.length, previous: wonLeadsPrev.length, change: wonLeadsCurrent.length - wonLeadsPrev.length },
-        value: { current: wonLeadsCurrent.reduce((s, l) => s + l.valor, 0), previous: wonLeadsPrev.reduce((s, l) => s + l.valor, 0), change: 0 },
-        avgTicket: { current: wonLeadsCurrent.length > 0 ? wonLeadsCurrent.reduce((s, l) => s + l.valor, 0) / wonLeadsCurrent.length : 0, previous: 0, change: 0 },
+        value: { current: wonLeadsCurrent.reduce((s, l) => s + getLeadValue(l), 0), previous: wonLeadsPrev.reduce((s, l) => s + getLeadValue(l), 0), change: 0 },
+        // AvgTicket now represents Average Contract Value (ACV)
+        avgTicket: { current: wonLeadsCurrent.length > 0 ? wonLeadsCurrent.reduce((s, l) => s + getLeadValue(l), 0) / wonLeadsCurrent.length : 0, previous: 0, change: 0 },
         conversion: 0, // Will be filled later by funnel
-        lastSale: lastSaleLead ? { daysAgo: diffInDays(new Date(), lastSaleLead.dataFechamento!), value: lastSaleLead.valor } : null
+        lastSale: lastSaleLead ? { daysAgo: diffInDays(new Date(), lastSaleLead.dataFechamento!), value: getLeadValue(lastSaleLead) } : null
     };
     closedSales.value.change = calculateChange(closedSales.value.current, closedSales.value.previous);
-    closedSales.avgTicket.previous = wonLeadsPrev.length > 0 ? wonLeadsPrev.reduce((s, l) => s + l.valor, 0) / wonLeadsPrev.length : 0;
+    closedSales.avgTicket.previous = wonLeadsPrev.length > 0 ? wonLeadsPrev.reduce((s, l) => s + getLeadValue(l), 0) / wonLeadsPrev.length : 0;
     closedSales.avgTicket.change = calculateChange(closedSales.avgTicket.current, closedSales.avgTicket.previous);
 
     const lostLeadsData = {
         count: { current: lostLeadsCurrent.length, previous: lostLeadsPrev.length, change: lostLeadsCurrent.length - lostLeadsPrev.length },
-        value: lostLeadsCurrent.reduce((s, l) => s + l.valor, 0),
-        avgValue: lostLeadsCurrent.length > 0 ? lostLeadsCurrent.reduce((s, l) => s + l.valor, 0) / lostLeadsCurrent.length : 0,
+        value: lostLeadsCurrent.reduce((s, l) => s + getLeadValue(l), 0),
+        avgValue: lostLeadsCurrent.length > 0 ? lostLeadsCurrent.reduce((s, l) => s + getLeadValue(l), 0) / lostLeadsCurrent.length : 0,
         topReasons: Object.entries(lostLeadsCurrent.reduce((acc, l) => {
             const reason = l.motivoPerda || 'N/A';
             if (reason !== 'N/A') acc[reason] = (acc[reason] || 0) + 1;
@@ -105,13 +123,13 @@ export const calculateDashboardGeralMetrics = (
     // Use totalActivePipelineLeads for this KPI
     const activeLeadsKpi = { 
         count: totalActivePipelineLeads.length, 
-        value: totalActivePipelineLeads.reduce((s, l) => s + l.valor, 0) 
+        value: totalActivePipelineLeads.reduce((s, l) => s + getLeadValue(l), 0) 
     };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const newLeadsToday = allCrmData.filter(l => l.dataCriacao && (new Date(l.dataCriacao).setHours(0,0,0,0) === today.getTime()));
-    const newLeadsTodayKpi = { count: newLeadsToday.length, value: newLeadsToday.reduce((sum, lead) => sum + lead.valor, 0) };
+    const newLeadsTodayKpi = { count: newLeadsToday.length, value: newLeadsToday.reduce((sum, lead) => sum + getLeadValue(lead), 0) };
     
     // --- 2. Funnel, Conversions, and Alert (based on leads CREATED in period) ---
     const stageProgressCounts = FUNNEL_STAGES_ORDER.reduce((acc, stage) => ({ ...acc, [stage]: 0 }), {} as Record<string, number>);
@@ -126,7 +144,7 @@ export const calculateDashboardGeralMetrics = (
             }
         }
         if (ACTIVE_PIPELINE_STAGES.includes(l.status) || WON_STATUSES.includes(l.status)) {
-             stageValues[l.status] = (stageValues[l.status] || 0) + l.valor;
+             stageValues[l.status] = (stageValues[l.status] || 0) + getLeadValue(l);
         }
     });
 
@@ -142,11 +160,11 @@ export const calculateDashboardGeralMetrics = (
     
     const getStageKpi = (stage: string) => ({
         count: currentCrmData.filter(l => l.status === stage).length,
-        value: currentCrmData.filter(l => l.status === stage).reduce((s, l) => s + l.valor, 0),
+        value: currentCrmData.filter(l => l.status === stage).reduce((s, l) => s + getLeadValue(l), 0),
         conversion: funnelConversions.find(c => c.to === stage)?.rate ?? 0,
     });
     
-    const totalLeadsKpi = { count: currentCrmData.length, value: currentCrmData.reduce((s, l) => s + l.valor, 0), conversionToNext: funnelConversions.find(c => c.from === 'novo lead')?.rate ?? 0 };
+    const totalLeadsKpi = { count: currentCrmData.length, value: currentCrmData.reduce((s, l) => s + getLeadValue(l), 0), conversionToNext: funnelConversions.find(c => c.from === 'novo lead')?.rate ?? 0 };
     
     const notApproachedCount = allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === 'Não abordado').length;
     const lastAttemptCount = allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === 'Última Tentativa').length;
@@ -154,7 +172,7 @@ export const calculateDashboardGeralMetrics = (
     let alert: Alert | null = null;
     
     if(notApproachedCount > 0 || lastAttemptCount > 0 || lastFupCount > 0) {
-        const valueAtRisk = allCrmData.filter(l => (l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)) || (l.status === 'em follow up' && l.followUp === 'Último Fup')).reduce((sum, l) => sum + l.valor, 0);
+        const valueAtRisk = allCrmData.filter(l => (l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)) || (l.status === 'em follow up' && l.followUp === 'Último Fup')).reduce((sum, l) => sum + getLeadValue(l), 0);
         alert = { type: 'critical', title: `AÇÃO URGENTE: ${notApproachedCount + lastAttemptCount + lastFupCount} leads em risco de perda!`, message: 'Ação imediata necessária para evitar a perda destas oportunidades.', details: [`Não abordados: ${notApproachedCount}`, `Última tentativa de contato: ${lastAttemptCount}`, `Último follow up: ${lastFupCount}`], valueAtRisk };
     } else {
         const bottleneck = funnelConversions.length > 0 ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null;
@@ -164,8 +182,8 @@ export const calculateDashboardGeralMetrics = (
         }
     }
     
-    const prospecting = { totalInStage: allCrmData.filter(l => l.status === 'tentativa de contato').length, distribution: ['Não abordado','Tentativa 1','Tentativa 2','Tentativa 3','Tentativa 4','Última Tentativa'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === name).length, percentage: 0})), atRisk: { notApproached: notApproachedCount, lastAttempt: lastAttemptCount, total: notApproachedCount + lastAttemptCount, value: allCrmData.filter(l => l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)).reduce((s,l)=>s+l.valor,0) }, successRate: [] };
-    const followUp = { totalInStage: allCrmData.filter(l => l.status === 'em follow up').length, distribution: ['Proposta Enviada', 'Fup 1', 'Fup 2', 'Fup 3', 'Fup 4', 'Último Fup'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === name).length })), urgent: { lastFup: { count: lastFupCount, value: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === 'Último Fup').reduce((s, l) => s + l.valor, 0) }, stale7days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 7).length, stale14days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 14).length, }, closingPerformance: [], avgTimeInFollowUp: 0 };
+    const prospecting = { totalInStage: allCrmData.filter(l => l.status === 'tentativa de contato').length, distribution: ['Não abordado','Tentativa 1','Tentativa 2','Tentativa 3','Tentativa 4','Última Tentativa'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'tentativa de contato' && l.prospeccao === name).length, percentage: 0})), atRisk: { notApproached: notApproachedCount, lastAttempt: lastAttemptCount, total: notApproachedCount + lastAttemptCount, value: allCrmData.filter(l => l.status === 'tentativa de contato' && ['Não abordado', 'Última Tentativa'].includes(l.prospeccao)).reduce((s,l)=>s+getLeadValue(l),0) }, successRate: [] };
+    const followUp = { totalInStage: allCrmData.filter(l => l.status === 'em follow up').length, distribution: ['Proposta Enviada', 'Fup 1', 'Fup 2', 'Fup 3', 'Fup 4', 'Último Fup'].map(name => ({ name, count: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === name).length })), urgent: { lastFup: { count: lastFupCount, value: allCrmData.filter(l => l.status === 'em follow up' && l.followUp === 'Último Fup').reduce((s, l) => s + getLeadValue(l), 0) }, stale7days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 7).length, stale14days: allCrmData.filter(l => l.status === 'em follow up' && diffInDays(new Date(), l.dataAtualizacao) > 14).length, }, closingPerformance: [], avgTimeInFollowUp: 0 };
     
     const avgTotalCycleTime = wonLeadsCurrent.length > 0 
         ? wonLeadsCurrent.reduce((s, l) => s + diffInDays(l.dataFechamento!, l.dataCriacao), 0) / wonLeadsCurrent.length 
@@ -178,16 +196,242 @@ export const calculateDashboardGeralMetrics = (
     const timeFunnel = calculateTimeFunnelAnalysis(avgTotalCycleTime);
     const velocity = calculateFunnelVelocity(wonLeadsCurrent, allCrmData, byResponsible);
 
-    return { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, closedSales, lostLeads: lostLeadsData, geralConversion, prospeccaoKpi: getStageKpi('tentativa de contato'), propostaKpi: getStageKpi('call agendada'), followUpKpi: getStageKpi('em follow up'), negociacaoKpi: getStageKpi('em follow up'), alert, prospecting, followUp, campaigns: campaignAnalysis, byResponsible, forecast, timeFunnel, velocity, visualFunnel: { stages: FUNNEL_STAGES_ORDER.map(stage => ({ name: stage, count: stageProgressCounts[stage] || 0, value: stageValues[stage] || 0, subStages: stage === 'tentativa de contato' ? prospecting.distribution : (stage === 'em follow up' ? followUp.distribution : undefined) })), conversions: funnelConversions, bottleneck: alert?.type === 'bottleneck' ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null, opportunity: null } };
+    // --- NEW ANALYSES ---
+    const lossAnalysis = calculateLossAnalysis(allCrmData); // Use all data for better stats
+    const qualityAnalysis = calculateQualityAnalysis(allCrmData);
+    const acquisitionAnalysis = calculateAcquisitionAnalysis(allCrmData);
+    const contractsAnalysis = calculateContractsAnalysis(allCrmData);
+
+    return { totalLeadsKpi, newLeadsTodayKpi, activeLeadsKpi, closedSales, lostLeads: lostLeadsData, geralConversion, prospeccaoKpi: getStageKpi('tentativa de contato'), propostaKpi: getStageKpi('call agendada'), followUpKpi: getStageKpi('em follow up'), negociacaoKpi: getStageKpi('em follow up'), alert, prospecting, followUp, campaigns: campaignAnalysis, byResponsible, forecast, timeFunnel, velocity, lossAnalysis, qualityAnalysis, acquisitionAnalysis, contractsAnalysis, visualFunnel: { stages: FUNNEL_STAGES_ORDER.map(stage => ({ name: stage, count: stageProgressCounts[stage] || 0, value: stageValues[stage] || 0, subStages: stage === 'tentativa de contato' ? prospecting.distribution : (stage === 'em follow up' ? followUp.distribution : undefined) })), conversions: funnelConversions, bottleneck: alert?.type === 'bottleneck' ? funnelConversions.reduce((min, c) => c.rate < min.rate ? c : min) : null, opportunity: null } };
 };
 
-// --- Sub-calculators for new sections ---
+// --- Sub-calculators ---
+
+const calculateLossAnalysis = (crmData: CrmData[]): LossAnalysis => {
+    const lostLeads = crmData.filter(l => l.status === 'perdido');
+    const totalLost = lostLeads.length;
+    
+    // 1. Motivos
+    const reasonsMap = lostLeads.reduce((acc, l) => {
+        const r = l.motivoPerda || 'Não informado';
+        acc[r] = (acc[r] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    const reasons = Object.entries(reasonsMap)
+        .map(([reason, count]) => ({ reason, count, percentage: totalLost > 0 ? (count/totalLost)*100 : 0 }))
+        .sort((a,b) => b.count - a.count);
+
+    // 2. Tentativas (Parse "Tentativa X" or "Fup X")
+    const extractAttempt = (str: string): number | null => {
+        const match = str.match(/(?:Tentativa|Fup)\s*(\d+)/i);
+        return match ? parseInt(match[1]) : null;
+    };
+
+    const wins = crmData.filter(l => WON_STATUSES.includes(l.status));
+    
+    const attemptsToWinValues = wins.map(l => {
+        // Assume last attempt recorded is the winning one
+        // Check both prospeccao and followUp fields
+        const p = extractAttempt(l.prospeccao);
+        const f = extractAttempt(l.followUp);
+        return f ? f + 4 : (p || 1); // Rough estimate: Fup starts after ~4 prospecting steps? Or just take max
+    }).filter(n => n > 0);
+    
+    const attemptsToLoseValues = lostLeads.map(l => {
+        const p = extractAttempt(l.prospeccao);
+        const f = extractAttempt(l.followUp);
+        return Math.max(p || 0, f || 0);
+    }).filter(n => n > 0);
+
+    const avgWin = attemptsToWinValues.length > 0 ? attemptsToWinValues.reduce((a,b)=>a+b,0)/attemptsToWinValues.length : 0;
+    const avgLose = attemptsToLoseValues.length > 0 ? attemptsToLoseValues.reduce((a,b)=>a+b,0)/attemptsToLoseValues.length : 0;
+
+    // Distribution for chart
+    const maxAttempt = Math.max(
+        ...attemptsToWinValues, 
+        ...attemptsToLoseValues, 
+        5 // minimum visualization range
+    );
+    
+    const winsDist = Array(maxAttempt + 1).fill(0);
+    const lossDist = Array(maxAttempt + 1).fill(0);
+    attemptsToWinValues.forEach(a => winsDist[a] = (winsDist[a]||0) + 1);
+    attemptsToLoseValues.forEach(a => lossDist[a] = (lossDist[a]||0) + 1);
+
+    return {
+        reasons,
+        attemptsToWin: avgWin,
+        attemptsToLose: avgLose,
+        attemptsDistribution: {
+            labels: Array.from({length: maxAttempt}, (_, i) => `${i+1}ª`),
+            wins: winsDist.slice(1),
+            losses: lossDist.slice(1)
+        }
+    };
+};
+
+const calculateQualityAnalysis = (crmData: CrmData[]): QualityAnalysis => {
+    // Helper
+    const calcStats = (data: CrmData[]) => {
+        const total = data.length;
+        const wins = data.filter(l => WON_STATUSES.includes(l.status)).length;
+        // Use TCV for pipeline and ticket
+        const pipeline = data.filter(l => ACTIVE_PIPELINE_STAGES.includes(l.status)).reduce((s,l)=>s+getLeadValue(l),0);
+        const avgTicket = wins > 0 ? data.filter(l => WON_STATUSES.includes(l.status)).reduce((s,l)=>s+getLeadValue(l),0) / wins : 0;
+        return { total, wins, rate: total > 0 ? (wins/total)*100 : 0, pipeline, avgTicket };
+    };
+
+    // 1. Temperature
+    const temps = ['QUENTE', 'MORNO', 'FRIO'];
+    const temperature = temps.map(t => ({
+        label: t,
+        ...calcStats(crmData.filter(l => l.temperatura === t))
+    }));
+
+    // 2. ABC
+    const abcs = ['A', 'B', 'C'];
+    const abc = abcs.map(c => ({
+        label: c,
+        ...calcStats(crmData.filter(l => l.abc === c))
+    }));
+
+    // 3. Services (Group by cleaned service name)
+    const serviceMap = crmData.reduce((acc, l) => {
+        const s = l.servico || 'Não definido';
+        if (!acc[s]) acc[s] = [];
+        acc[s].push(l);
+        return acc;
+    }, {} as Record<string, CrmData[]>);
+    
+    const services = Object.entries(serviceMap).map(([label, leads]) => ({
+        label,
+        ...calcStats(leads)
+    })).sort((a,b) => b.total - a.total);
+
+    return { temperature, abc, services };
+};
+
+const calculateAcquisitionAnalysis = (crmData: CrmData[]): AcquisitionAnalysis => {
+    // 1. Sources
+    const sourceMap = crmData.reduce((acc, l) => {
+        const s = l.source || 'Desconhecido';
+        if (!acc[s]) acc[s] = [];
+        acc[s].push(l);
+        return acc;
+    }, {} as Record<string, CrmData[]>);
+
+    const sources = Object.entries(sourceMap).map(([label, leads]) => {
+        const wins = leads.filter(l => WON_STATUSES.includes(l.status)).length;
+        const total = leads.length;
+        return {
+            label,
+            total,
+            rate: total > 0 ? (wins/total)*100 : 0,
+            pipeline: leads.filter(l => ACTIVE_PIPELINE_STAGES.includes(l.status)).reduce((s,l)=>s+getLeadValue(l),0)
+        };
+    }).sort((a,b) => b.total - a.total);
+
+    // 2. Evolution (Weekly)
+    const weeks: Record<string, number> = {};
+    const sortedLeads = [...crmData].sort((a,b) => a.dataCriacao.getTime() - b.dataCriacao.getTime());
+    
+    sortedLeads.forEach(l => {
+        if(!l.dataCriacao) return;
+        // Get start of week
+        const d = new Date(l.dataCriacao);
+        const day = d.getUTCDay(), diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        const key = `${monday.getUTCDate()}/${monday.getUTCMonth()+1}`;
+        weeks[key] = (weeks[key] || 0) + 1;
+    });
+
+    const labels = Object.keys(weeks).slice(-8); // Last 8 weeks
+    const count = labels.map(k => weeks[k]);
+
+    return { sources, evolution: { labels, count } };
+};
+
+const calculateContractsAnalysis = (crmData: CrmData[]): ContractsAnalysis => {
+    const wonLeads = crmData.filter(l => WON_STATUSES.includes(l.status));
+    const totalWon = wonLeads.length;
+
+    // 1. Duration Distribution
+    const durationMap = wonLeads.reduce((acc, l) => {
+        const k = l.tempoContrato ? `${l.tempoContrato} meses` : 'Outros';
+        if(!acc[k]) acc[k] = { count: 0, value: 0 };
+        acc[k].count++;
+        acc[k].value += getLeadValue(l); // Use TCV
+        return acc;
+    }, {} as Record<string, {count: number, value: number}>);
+
+    const duration = Object.entries(durationMap).map(([label, stats]) => ({
+        label,
+        count: stats.count,
+        percentage: totalWon > 0 ? (stats.count/totalWon)*100 : 0,
+        value: stats.value
+    }));
+
+    // 2. LTV
+    const projectedLTVs = wonLeads.map(l => getLeadValue(l));
+    const totalProjected = projectedLTVs.reduce((a,b) => a+b, 0);
+    const average = totalWon > 0 ? totalProjected / totalWon : 0;
+
+    // LTV by Service
+    const ltvServiceMap = wonLeads.reduce((acc, l) => {
+        const s = l.servico || 'Geral';
+        if(!acc[s]) acc[s] = [];
+        acc[s].push(getLeadValue(l));
+        return acc;
+    }, {} as Record<string, number[]>);
+
+    const byService = Object.entries(ltvServiceMap).map(([service, ltvs]) => ({
+        service,
+        ltv: ltvs.reduce((a,b)=>a+b,0) / ltvs.length
+    }));
+
+    // 3. Future Revenue
+    const today = new Date();
+    let next3Months = 0;
+    let next6Months = 0;
+    let expiring90Days = 0;
+
+    wonLeads.forEach(l => {
+        if (!l.dataFechamento) return;
+        const monthsDuration = l.tempoContrato || 12;
+        const endDate = new Date(l.dataFechamento);
+        endDate.setMonth(endDate.getMonth() + monthsDuration);
+        
+        // Calculate remaining months from now
+        const diffTime = endDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffMonths = diffDays / 30;
+
+        if (diffDays > 0) {
+            // Revenue remaining for this client (using monthly value)
+            const monthsToCount3 = Math.min(diffMonths, 3);
+            next3Months += monthsToCount3 * l.valor;
+
+            const monthsToCount6 = Math.min(diffMonths, 6);
+            next6Months += monthsToCount6 * l.valor;
+
+            if (diffDays <= 90) expiring90Days++;
+        }
+    });
+
+    return {
+        duration,
+        ltv: { average, totalProjected, byService },
+        futureRevenue: { next3Months, next6Months, expiring90Days }
+    };
+};
+
 const calculateResponsibleAnalysis = (crmData: CrmData[], globalAvgTime: number, globalAvgTicket: number): ResponsibleAnalysis => {
     const reps = Array.from(new Set(crmData.map(l => l.responsavel).filter(r => r && r !== 'N/A')));
     const detailed: ResponsibleData[] = reps.map(rep => {
         const repLeads = crmData.filter(l => l.responsavel === rep);
         const wonLeads = repLeads.filter(l => WON_STATUSES.includes(l.status) && l.dataFechamento);
-        const totalValue = wonLeads.reduce((s, l) => s + l.valor, 0);
+        const totalValue = wonLeads.reduce((s, l) => s + getLeadValue(l), 0); // Use TCV
         const conversionRate = repLeads.length > 0 ? (wonLeads.length / repLeads.length) * 100 : 0;
         const avgTicket = wonLeads.length > 0 ? totalValue / wonLeads.length : 0;
         const avgTimeToClose = wonLeads.length > 0 
@@ -215,7 +459,10 @@ const calculateForecastAnalysis = (crmData: CrmData[], avgCycleTime: number): Fo
         if (lead.status === 'em follow up') probability = Math.min(cycleProgress * 80, 85);
         else if (lead.status === 'call realizada') probability = Math.min(cycleProgress * 100, 95);
 
-        return { name: lead.nome, status: lead.status, value: lead.valor, probability, daysInStage: diffInDays(new Date(), lead.dataAtualizacao), responsible: lead.responsavel };
+        // Use TCV for forecast
+        const tcv = getLeadValue(lead);
+
+        return { name: lead.nome, status: lead.status, value: tcv, probability, daysInStage: diffInDays(new Date(), lead.dataAtualizacao), responsible: lead.responsavel };
     }).sort((a,b) => b.probability - a.probability);
 
     const expectedValue = leads.reduce((sum, l) => sum + (l.value * (l.probability / 100)), 0);
@@ -290,7 +537,8 @@ const calculateCampaignAnalysis = (
     const detailedCampaigns: CampaignPerformanceData[] = aggregatedCampaigns.map(campaign => {
         const campaignSales = salesFromMetaAdsInPeriod.filter(sale => sale.campaign === campaign.name);
         const salesCount = campaignSales.length;
-        const wonValue = campaignSales.reduce((sum, sale) => sum + sale.valor, 0);
+        // Use TCV for campaign value
+        const wonValue = campaignSales.reduce((sum, sale) => sum + getLeadValue(sale), 0);
         const investment = campaign.investment;
         const leads = campaign.leads;
         const roi = investment > 0 ? ((wonValue - investment) / investment) * 100 : (wonValue > 0 ? Infinity : 0);
@@ -310,12 +558,18 @@ const calculateCampaignAnalysis = (
     const cpl = { current: leads.current > 0 ? investment.current / leads.current : 0, previous: leads.previous > 0 ? investment.previous / leads.previous : 0, change: 0 };
     cpl.change = calculateChange(cpl.current, cpl.previous);
     
-    const totalWonValue = salesFromMetaAdsInPeriod.reduce((s, c) => s + c.valor, 0);
+    // Use TCV for total won value
+    const totalWonValue = salesFromMetaAdsInPeriod.reduce((s, c) => s + getLeadValue(c), 0);
     const roi = investment.current > 0 ? ((totalWonValue - investment.current) / investment.current) * 100 : totalWonValue > 0 ? Infinity : 0;
     
     const cac = salesFromMetaAdsInPeriod.length > 0 ? investment.current / salesFromMetaAdsInPeriod.length : 0;
-    const avgTicketTotal = wonLeadsCurrent.length > 0 ? wonLeadsCurrent.reduce((s, l) => s + l.valor, 0) / wonLeadsCurrent.length : 0;
-    const ltvCacRatio = cac > 0 ? (avgTicketTotal * 6) / cac : 0;
+    // Avg Ticket here should also represent ACV (TCV based)
+    const avgTicketTotal = wonLeadsCurrent.length > 0 ? wonLeadsCurrent.reduce((s, l) => s + getLeadValue(l), 0) / wonLeadsCurrent.length : 0;
+    
+    // LTV/CAC: Assuming average ticket is the contract value, LTV is roughly that value (or renewable). 
+    // If ticket is monthly, we multiply by duration. Since getLeadValue already does that (TCV), 
+    // we can assume TCV is the "Initial LTV".
+    const ltvCacRatio = cac > 0 ? avgTicketTotal / cac : 0;
 
     const leadToSaleConversion = { current: leadsFromMetaAdsInPeriod.length > 0 ? (salesFromMetaAdsInPeriod.length / leadsFromMetaAdsInPeriod.length) * 100 : 0, previous: previousPeriodCrmData.filter(l => l.source === 'Meta Ads').length > 0 ? (salesFromMetaAdsPrevPeriod.length / previousPeriodCrmData.filter(l => l.source === 'Meta Ads').length) * 100 : 0, change: 0, diff: 0 };
     leadToSaleConversion.diff = leadToSaleConversion.current - leadToSaleConversion.previous;

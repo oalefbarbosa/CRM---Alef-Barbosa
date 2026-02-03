@@ -135,6 +135,10 @@ export function loadCRM(): Promise<CrmData[]> {
           url: row['URL'] || '',
           source: row['Source'] || 'N/A',
           campaign: row['Campaign'] || 'N/A',
+          abc: (row['ABC ARC'] || 'C').toUpperCase().trim(),
+          // Strictly parse contract duration without assuming 12 months default if missing.
+          tempoContrato: cleanAndParseInt(row['Tempo de Contrato'] || row['Tempo Contrato'] || row['Duração']), 
+          pagamento: (row['Pagamento'] || row['Tipo de Pagamento'] || 'MRR').trim()
         }));
         resolve(leads);
       },

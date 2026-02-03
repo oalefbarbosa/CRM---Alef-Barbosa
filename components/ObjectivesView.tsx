@@ -8,6 +8,7 @@ import TrackYearView from './objectives/TrackYearView';
 import CurrentMonthView from './objectives/CurrentMonthView';
 import Tabs from './Tabs';
 import * as Icons from './Icons';
+import { getLeadValue } from '../utils/calculations'; // Import helper
 
 // Default configuration values
 const DEFAULT_FUNNEL_CONFIG: Omit<FunnelConfig, 'ano'> = {
@@ -95,10 +96,9 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
             const funnelKey = `funnel_config_${funnelConfig.ano}`;
             const scenariosKey = `scenario_settings_${funnelConfig.ano}`;
             
-            await Promise.all([
-                saveConfig(funnelKey, funnelConfig),
-                saveConfig(scenariosKey, scenarioSettings)
-            ]);
+            // Execute sequentially to avoid Google Apps Script lock collisions/errors
+            await saveConfig(funnelKey, funnelConfig);
+            await saveConfig(scenariosKey, scenarioSettings);
             
             setSavingStatus('saved');
             setTimeout(() => setSavingStatus('idle'), 2000); // Reset after 2s
@@ -143,7 +143,12 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
       const closeDate = lead.dataFechamento;
       if (WON_STATUSES.includes(lead.status) && closeDate && closeDate.getUTCFullYear() === selectedYear) {
         monthlyData[closeDate.getUTCMonth()].vendas_real++;
-        monthlyData[closeDate.getUTCMonth()].faturamento_real += lead.valor;
+        
+        // Calculate Total Contract Value (TCV) using the shared helper.
+        // We do NOT pass the default duration here anymore, relying on the logic in getLeadValue to strictly use lead data.
+        const tcv = getLeadValue(lead);
+
+        monthlyData[closeDate.getUTCMonth()].faturamento_real += tcv;
       }
     });
     
@@ -154,7 +159,7 @@ const ObjectivesView: React.FC<{ allCrmData: CrmData[] }> = ({ allCrmData }) => 
 
 
     return { monthly: monthlyData, total: { clientes_real: clientes_real_total } };
-  }, [allCrmData, selectedYear]);
+  }, [allCrmData, selectedYear]); // Removed funnelConfig from dependency since we don't use it for realized calc anymore
   
   const availableYears = useMemo(() => {
       const years = new Set(allCrmData.map(d => d.dataCriacao.getUTCFullYear()));
